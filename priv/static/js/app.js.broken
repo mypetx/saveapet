@@ -1,0 +1,597 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const apiBase = '/api'
+  const formAuth = document.getElementById('form-auth')
+  const btnSubmitAuth = document.getElementById('btn-submit-auth')
+  const btnToggleRegister = document.getElementById('btn-toggle-register')
+  const feed = document.getElementById('feed')
+  const authSection = document.getElementById('auth')
+
+  const formReport = document.getElementById('form-report')
+  const btnSubmitReport = document.getElementById('btn-submit-report')
+  const btnClearReport = document.getElementById('btn-clear-report')
+
+  const petsDiv = document.getElementById('pets')
+
+  const msgModal = document.getElementById('msg-modal')
+  const msgTo = document.getElementById('msg-to')
+  const msgText = document.getElementById('msg-text')
+  const btnSendMsg = document.getElementById('btn-send-msg')
+  const btnCloseMsg = document.getElementById('btn-close-msg')
+
+  let currentPetOwner = null
+  let currentUser = null
+  let reportMarker = null
+
+  let isRegister = false
+
+  // ensure only email/password shown on login
+  function updateAuthFields(){
+    const show = isRegister
+    const elems = ['name','phone','city']
+    elems.forEach(id => { const el = document.getElementById(id); if (!el) return; el.style.display = show ? 'block' : 'none' })
+  }
+
+  // initialize fields visibility
+  updateAuthFields()
+
+  btnToggleRegister.addEventListener('click', () => {
+    isRegister = !isRegister
+    document.getElementById('auth-title').innerText = isRegister ? 'Criar conta' : 'Entrar'
+    btnSubmitAuth.innerText = isRegister ? 'Criar conta' : 'Entrar'
+    btnToggleRegister.innerText = isRegister ? 'Já tenho conta' : 'Ainda não tem conta?'
+    updateAuthFields()
+  })
+
+  btnSubmitAuth.addEventListener('click', async () => {
+    const name = document.getElementById('name').value
+    const email = document.getElementById('email').value
+    const password = document.getElementById('password').value
+    const phone = document.getElementById('phone') ? document.getElementById('phone').value : null
+    const city = document.getElementById('city') ? document.getElementById('city').value : null
+
+    if (!email || !password) return alert('Preencha email e senha')
+
+    if (isRegister) {
+      const payload = { name, email, password }
+      if (phone) payload.phone = phone
+      if (city) payload.city = city
+      const res = await fetch(`${apiBase}/register`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      const data = await res.json()
+      if (data.token) {
+        localStorage.setItem('token', data.token)
+        await afterLogin()
+      } else {
+        alert((data.details && JSON.stringify(data.details)) || data.error || 'Erro no cadastro')
+      }
+    } else {
+      const res = await fetch(`${apiBase}/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) })
+      const data = await res.json()
+      if (data.token) {
+        localStorage.setItem('token', data.token)
+        await afterLogin()
+      } else {
+        alert(data.error || 'Login falhou')
+      }
+    }
+  })
+
+  async function afterLogin(){
+    try {
+      alert('1 - inicio')
+      alert('authSection: ' + (authSection ? 'OK' : 'NULL'))
+      alert('feed: ' + (feed ? 'OK' : 'NULL'))
+      authSection.style.display = 'none'
+      feed.style.display = 'flex'
+      const mapSection = document.getElementById('map-section')
+      if (mapSection) mapSection.style.display = 'block'
+      alert('2 - antes initMap')
+      await initMap()
+      alert('3 - depois initMap')
+      if (map && typeof map.invalidateSize === 'function') {
+        setTimeout(() => { try { map.invalidateSize() } catch(e){} }, 250)
+      }
+      alert('4 - antes loadMe')
+      await loadMe()
+      alert('5 - depois loadMe')
+      await loadPets()
+      alert('6 - depois loadPets')
+      renderHeaderButtons()
+      alert('7 - depois renderHeaderButtons')
+      showFab()
+      alert('8 - FIM')
+    } catch(e) {
+      alert('ERRO: ' + e.message)
+      console.error('Erro em afterLogin:', e)
+    }
+  }
+
+  // floating create post button (FAB)
+  function ensureFab(){
+    let f = document.querySelector('.fab')
+    if (!f) {
+      f = document.createElement('button')
+      f.className = 'fab'
+      f.id = 'fab-create'
+      f.innerText = '+'
+      document.body.appendChild(f)
+    }
+    return f
+  }
+
+  function showFab(){
+    const f = ensureFab()
+    if (!currentUser) { f.classList.add('hidden'); return }
+    f.classList.remove('hidden')
+    f.addEventListener('click', () => {
+      // show create-post page
+      document.getElementById('feed').style.display = 'none'
+      // keep the map visible so user can reference the address while creating
+      const mapSection = document.getElementById('map-section')
+      if (mapSection) mapSection.style.display = 'block'
+      // ensure the map redraws when create page is shown
+      if (map && typeof map.invalidateSize === 'function') { setTimeout(()=>{ try{ map.invalidateSize() }catch(e){} }, 200) }
+      document.getElementById('create-post').style.display = 'block'
+      // scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
+  function hideFab(){ const f = document.querySelector('.fab'); if (f) f.classList.add('hidden') }
+
+  // back to feed from create-post
+  const btnBack = document.getElementById('btn-back-feed')
+  if (btnBack) btnBack.addEventListener('click', () => {
+    document.getElementById('create-post').style.display='none'
+    document.getElementById('feed').style.display='flex'
+    window.scrollTo({ top:0, behavior:'smooth'})
+    showFab()
+    if (map && typeof map.invalidateSize === 'function') setTimeout(()=>{ try{ map.invalidateSize() }catch(e){} }, 200)
+  })
+
+  // header actions rendering
+  function ensureHeaderActions(){
+    let actions = document.querySelector('.header-actions')
+    if (!actions) {
+      const brand = document.querySelector('.brand')
+      actions = document.createElement('div')
+      actions.className = 'header-actions'
+      brand.appendChild(actions)
+    }
+    return actions
+  }
+
+  function renderHeaderButtons(){
+    const actions = ensureHeaderActions()
+    actions.innerHTML = ''
+    // only render buttons when we have a logged user
+    if (!currentUser) return
+
+    // messages icon
+    const msgBtn = document.createElement('button')
+    msgBtn.className = 'btn icon'
+    msgBtn.title = 'Mensagens'
+    msgBtn.innerHTML = '✉️'
+    msgBtn.addEventListener('click', async () => {
+      inboxModal.style.display='flex'
+      await loadMessages()
+    })
+    actions.appendChild(msgBtn)
+
+    // profile menu (Meu Perfil -> Editar perfil, Sair)
+    const profWrap = document.createElement('div')
+    profWrap.className = 'profile-menu'
+    const profLabel = document.createElement('button')
+    profLabel.className = 'btn profile-btn'
+    profLabel.innerText = 'Meu Perfil'
+    profLabel.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const dd = profWrap.querySelector('.profile-dropdown')
+      dd.style.display = dd.style.display === 'block' ? 'none' : 'block'
+    })
+    const dropdown = document.createElement('div')
+    dropdown.className = 'profile-dropdown'
+    dropdown.style.display = 'none'
+    dropdown.innerHTML = `<div class='profile-item' id='hdr-edit-profile'>Editar perfil</div><div class='profile-item' id='hdr-logout'>Sair</div>`
+    profWrap.appendChild(profLabel)
+    profWrap.appendChild(dropdown)
+    actions.appendChild(profWrap)
+
+    // dropdown handlers
+    profWrap.querySelector('#hdr-edit-profile').addEventListener('click', (ev) => { ev.stopPropagation(); openProfile(); profWrap.querySelector('.profile-dropdown').style.display='none' })
+    profWrap.querySelector('#hdr-logout').addEventListener('click', (ev) => { ev.stopPropagation(); doLogout(); profWrap.querySelector('.profile-dropdown').style.display='none' })
+    // click outside to close dropdown
+    document.addEventListener('click', () => { const dd = profWrap.querySelector('.profile-dropdown'); if (dd) dd.style.display='none' })
+  }
+
+  function openProfile(){
+    if (!currentUser) return alert('Faça login')
+    document.getElementById('profile-name').value = currentUser.name || ''
+    document.getElementById('profile-email').value = currentUser.email || ''
+    document.getElementById('profile-phone').value = currentUser.phone || ''
+    document.getElementById('profile-city').value = currentUser.city || ''
+    document.getElementById('profile-password').value = ''
+    document.getElementById('profile-modal').style.display = 'flex'
+  }
+
+  document.getElementById('btn-close-profile').addEventListener('click', () => document.getElementById('profile-modal').style.display = 'none')
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    doLogout()
+  })
+
+  document.getElementById('btn-save-profile').addEventListener('click', async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return alert('Faça login')
+    const payload = {}
+    const name = document.getElementById('profile-name').value
+    const email = document.getElementById('profile-email').value
+    const phone = document.getElementById('profile-phone').value
+    const city = document.getElementById('profile-city').value
+    const password = document.getElementById('profile-password').value
+    if (name) payload.name = name
+    if (email) payload.email = email
+    if (phone) payload.phone = phone
+    if (city) payload.city = city
+    if (password) payload.password = password
+    const res = await fetch(`${apiBase}/me`, { method: 'PATCH', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
+    const data = await res.json()
+    if (res.ok && data.user) {
+      currentUser = data.user
+      document.getElementById('profile-modal').style.display = 'none'
+      renderHeaderButtons()
+      await loadMe()
+      alert('Perfil atualizado')
+    } else {
+      alert((data.details && JSON.stringify(data.details)) || data.error || 'Erro ao atualizar')
+    }
+  })
+
+  function doLogout(){
+    localStorage.removeItem('token')
+    currentUser = null
+    // hide profile modal if open
+    const pm = document.getElementById('profile-modal')
+    if (pm) pm.style.display = 'none'
+    document.getElementById('auth').style.display = 'block'
+    document.getElementById('feed').style.display = 'none'
+    const mapSection = document.getElementById('map-section')
+    if (mapSection) mapSection.style.display = 'none'
+    const actions = document.querySelector('.header-actions')
+    if (actions) actions.innerHTML = ''
+  }
+
+  // map
+  let map
+  async function initMap(){
+    if (typeof L === 'undefined') {
+      console.error('Leaflet not loaded!')
+      return
+    }
+    try{
+      map = L.map('map').setView([-23.55, -46.63], 12)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
+      map.on('click', function(e){
+        const lat = e.latlng.lat.toFixed(6)
+        const lng = e.latlng.lng.toFixed(6)
+        const latInput = document.querySelector('[name="last_seen_lat"]')
+        const lngInput = document.querySelector('[name="last_seen_lng"]')
+        if (latInput && lngInput) { latInput.value = lat; lngInput.value = lng }
+        if (reportMarker) map.removeLayer(reportMarker)
+        reportMarker = L.marker([lat, lng]).addTo(map)
+      })
+    }catch(e){ console.warn('map init failed', e) }
+  }  async function loadMe(){
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const res = await fetch(`${apiBase}/me`, { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok){
+      const data = await res.json()
+      // userInfo element removed from HTML, no longer displaying name before map
+      // userInfo.innerHTML = `<strong>${data.user.name || data.user.email}</strong>`
+      currentUser = data.user
+    }
+  }
+
+  btnSubmitReport.addEventListener('click', async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return alert('Faça login primeiro')
+    // auto-geocode if lat/lng empty and address provided
+    const latInput = document.querySelector('[name="last_seen_lat"]')
+    const lngInput = document.querySelector('[name="last_seen_lng"]')
+    const addrInput = document.querySelector('[name="address"]')
+    if (( !latInput.value || !lngInput.value ) && addrInput && addrInput.value) {
+      try {
+        const q = encodeURIComponent(addrInput.value)
+        const gres = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
+        const results = await gres.json()
+        if (results && results.length>0) {
+          const place = results[0]
+          if (latInput) latInput.value = place.lat
+          if (lngInput) lngInput.value = place.lon
+          if (reportMarker) map.removeLayer(reportMarker)
+          reportMarker = L.marker([parseFloat(place.lat), parseFloat(place.lon)]).addTo(map)
+          map.setView([parseFloat(place.lat), parseFloat(place.lon)], 15)
+        }
+      } catch(e){ console.warn('geocode failed before submit', e) }
+    }
+
+    const fd = new FormData()
+    Array.from(formReport.elements).forEach(el => {
+      if (!el.name) return
+      if (el.type === 'file') { if (el.files && el.files[0]) fd.append(el.name, el.files[0]) }
+      else fd.append(el.name, el.value)
+    })
+    const res = await fetch(`${apiBase}/pets`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
+    const data = await res.json()
+    if (data.pet) {
+      alert('Post criado')
+      formReport.reset()
+      loadPets()
+      // keep user on the create-post page and ensure map is visible
+      const mapSection = document.getElementById('map-section')
+      if (mapSection) mapSection.style.display = 'block'
+      // scroll so the user sees the map and the form
+      const mapEl = document.getElementById('map')
+      if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if (map && typeof map.invalidateSize === 'function') setTimeout(()=>{ try{ map.invalidateSize() }catch(e){} }, 300)
+    } else {
+      alert(data.error || 'Erro ao criar post')
+    }
+  })
+
+  btnClearReport.addEventListener('click', () => formReport.reset())
+
+  async function loadPets(){
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${apiBase}/pets`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) return
+    const data = await res.json()
+    petsDiv.innerHTML = ''
+    data.pets.forEach(p => {
+      const card = document.createElement('div')
+      card.className = 'pet-card card modern'
+      const img = document.createElement('img')
+      img.src = p.photo_url || '/favicon.ico'
+      const meta = document.createElement('div')
+      meta.className = 'pet-meta'
+      meta.innerHTML = `<strong>${p.name || 'Sem nome'}</strong> <div class='muted'>${p.species || ''} • ${p.breed || ''}</div><div class='muted'>Status: ${p.status||''}</div><p>${p.description||''}</p>`
+  const actions = document.createElement('div')
+  actions.innerHTML = `<div class='row'><button class='btn' data-owner='${p.user_id}' data-pet='${p.id}'>Ver contato</button></div>`
+  // comments area
+  const commentsArea = document.createElement('div')
+  commentsArea.className = 'comments-area'
+  commentsArea.innerHTML = `<button class='btn show-comments' data-pet='${p.id}'>Mostrar comentários</button><div class='comments-list' id='comments-${p.id}' style='display:none'></div><div class='add-comment' id='addcomment-${p.id}' style='display:none'><textarea placeholder='Escreva um comentário' id='comment-text-${p.id}'></textarea><div class='row'><button class='btn add-comment-btn' data-pet='${p.id}'>Comentar</button></div></div>`
+  actions.appendChild(commentsArea)
+      card.appendChild(img)
+      card.appendChild(meta)
+      card.appendChild(actions)
+      petsDiv.appendChild(card)
+
+      // clicking the card shows details modal (but not when clicking inner buttons)
+      card.addEventListener('click', (ev) => {
+        if (ev.target.closest('button') || ev.target.closest('a')) return
+        openPetModal(p.id)
+      })
+
+      if (p.last_seen_lat && p.last_seen_lng && map) {
+        const marker = L.marker([p.last_seen_lat, p.last_seen_lng]).addTo(map)
+        marker.bindPopup(`<b>${p.name||'Pet'}</b><br>${p.species||''}<br>Status: ${p.status||''}`)
+      }
+    })
+
+    // attach message handlers
+    document.querySelectorAll('[data-owner]').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        const token = localStorage.getItem('token')
+        if (!token) { document.getElementById('auth').style.display='block'; document.getElementById('auth').scrollIntoView({behavior:'smooth'}); return }
+        const owner = ev.currentTarget.getAttribute('data-owner')
+        const petId = ev.currentTarget.getAttribute('data-pet')
+        currentPetOwner = { owner, petId }
+        msgTo.innerText = `Para usuário ${owner} (pet ${petId})`
+        msgModal.style.display = 'flex'
+      })
+    })
+
+    // attach comments handlers
+    document.querySelectorAll('.show-comments').forEach(btn => {
+      btn.addEventListener('click', async (ev) => {
+        const petId = ev.currentTarget.getAttribute('data-pet')
+        const list = document.getElementById(`comments-${petId}`)
+        const addBox = document.getElementById(`addcomment-${petId}`)
+        if (list.style.display === 'none') {
+          await loadComments(petId)
+          list.style.display = 'block'
+          if (currentUser) addBox.style.display = 'block'
+        } else { list.style.display = 'none'; addBox.style.display='none' }
+      })
+    })
+
+    document.querySelectorAll('.add-comment-btn').forEach(btn => {
+      btn.addEventListener('click', async (ev) => {
+        const petId = ev.currentTarget.getAttribute('data-pet')
+        const textarea = document.getElementById(`comment-text-${petId}`)
+        const body = textarea.value
+        if (!body || !currentUser) return alert('Faça login para comentar')
+        const token = localStorage.getItem('token')
+        const payload = { comment: { body: body, user_id: currentUser.id } }
+        const res = await fetch(`${apiBase}/pets/${petId}/comments`, { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
+        const data = await res.json()
+        if (data.id) { textarea.value = ''; await loadComments(petId) } else alert('Erro ao comentar')
+      })
+    })
+  }
+
+  async function loadComments(petId){
+    const token = localStorage.getItem('token')
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const res = await fetch(`${apiBase}/pets/${petId}/comments`, { headers })
+    if (!res.ok) return
+    const data = await res.json()
+    const list = document.getElementById(`comments-${petId}`)
+    list.innerHTML = ''
+    data.forEach(c => {
+      const el = document.createElement('div')
+      el.className = 'comment'
+      el.innerHTML = `<div class='muted small'>${c.user_id} • ${new Date(c.inserted_at).toLocaleString()}</div><div>${c.body}</div>`
+      list.appendChild(el)
+    })
+  }
+
+  // pet modal: show pet details and comments
+  async function loadPetCommentsModal(petId){
+    const token = localStorage.getItem('token')
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const res = await fetch(`${apiBase}/pets/${petId}/comments`, { headers })
+    if (!res.ok) return
+    const data = await res.json()
+    const container = document.getElementById('pet-comments')
+    container.innerHTML = ''
+    data.forEach(c => {
+      const el = document.createElement('div')
+      el.className = 'comment'
+      el.innerHTML = `<div class='muted small'>${c.user_id} • ${new Date(c.inserted_at).toLocaleString()}</div><div>${c.body}</div>`
+      container.appendChild(el)
+    })
+  }
+
+  async function openPetModal(petId){
+    const token = localStorage.getItem('token')
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const res = await fetch(`${apiBase}/pets/${petId}`, { headers })
+    if (!res.ok) return alert('Erro ao obter detalhes do pet')
+    const data = await res.json()
+    const p = data.pet
+    const det = document.getElementById('pet-detail')
+    det.innerHTML = `
+      <div class='row'>
+        <div style='flex:0 0 220px'><img src='${p.photo_url || '/favicon.ico'}' style='max-width:200px; width:100%'/></div>
+        <div style='flex:1; margin-left:12px'>
+          <h3>${p.name || ''}</h3>
+          <div class='muted'>${p.species || ''} ${p.breed || ''} • Status: ${p.status || ''}</div>
+          <p>${p.description || ''}</p>
+          <div class='muted'>Endereço: ${p.address || ''} ${p.reference || ''}</div>
+        </div>
+      </div>
+    `
+    document.getElementById('pet-modal').style.display = 'flex'
+    await loadPetCommentsModal(petId)
+    const addBox = document.getElementById('pet-add-comment')
+    if (currentUser) addBox.style.display = 'block'
+    else addBox.style.display = 'none'
+    const send = document.getElementById('pet-comment-send')
+    send.onclick = async () => {
+      const txt = document.getElementById('pet-comment-text').value
+      if (!txt) return alert('Escreva um comentário')
+      if (!currentUser) return alert('Faça login para comentar')
+      const token = localStorage.getItem('token')
+      const payload = { comment: { body: txt, user_id: currentUser.id } }
+      const r = await fetch(`${apiBase}/pets/${petId}/comments`, { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
+      const resd = await r.json()
+      if (resd.id) { document.getElementById('pet-comment-text').value = ''; await loadPetCommentsModal(petId) }
+      else alert('Erro ao comentar')
+    }
+  }
+
+  const btnClosePet = document.getElementById('btn-close-pet')
+  if (btnClosePet) btnClosePet.addEventListener('click', () => { document.getElementById('pet-modal').style.display='none'; document.getElementById('pet-detail').innerHTML=''; document.getElementById('pet-comments').innerHTML=''; })
+
+  // messages / inbox
+  const btnCloseInbox = document.getElementById('btn-close-inbox')
+  const inboxModal = document.getElementById('inbox-modal')
+  const inboxList = document.getElementById('inbox-list')
+  const conversationDiv = document.getElementById('conversation')
+
+  // header message/button is rendered only after login via renderHeaderButtons
+
+  btnCloseInbox && btnCloseInbox.addEventListener('click', () => { inboxModal.style.display='none'; conversationDiv.innerHTML=''; inboxList.innerHTML='' })
+
+  async function loadMessages(){
+    const token = localStorage.getItem('token')
+    if (!token) return alert('Faça login')
+    const res = await fetch(`${apiBase}/messages`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return
+    const data = await res.json()
+    inboxList.innerHTML = ''
+    data.forEach(conv => {
+      const el = document.createElement('div')
+      el.className = 'conversation-item'
+      el.innerHTML = `<div class='row'><strong>${conv.other_user_id}</strong><button class='btn open-conv' data-user='${conv.other_user_id}'>Abrir</button></div>`
+      inboxList.appendChild(el)
+    })
+    document.querySelectorAll('.open-conv').forEach(b => b.addEventListener('click', async (ev) => {
+      const userId = ev.currentTarget.getAttribute('data-user')
+      await openConversation(userId)
+    }))
+  }
+
+  async function openConversation(userId){
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${apiBase}/messages/conversation/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return
+    const data = await res.json()
+    conversationDiv.innerHTML = ''
+    data.forEach(m => {
+      const el = document.createElement('div')
+      el.className = m.from_user_id == currentUser.id ? 'msg sent' : 'msg recv'
+      el.innerText = `${m.message} \n\n <small class=\'muted\'>${m.inserted_at}</small>`
+      conversationDiv.appendChild(el)
+    })
+    // send box
+    const sendBox = document.createElement('div')
+    sendBox.innerHTML = `<textarea id='conv-text'></textarea><div class='row'><button id='conv-send' class='btn primary'>Enviar</button></div>`
+    conversationDiv.appendChild(sendBox)
+    document.getElementById('conv-send').addEventListener('click', async () => {
+      const txt = document.getElementById('conv-text').value
+      const res = await fetch(`${apiBase}/messages`, { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ to_user_id: userId, message: txt }) })
+      const r = await res.json()
+      if (r.message) { await openConversation(userId) }
+    })
+  }
+
+  btnCloseMsg.addEventListener('click', () => { msgModal.style.display = 'none'; msgText.value = '' })
+
+  btnSendMsg.addEventListener('click', async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return alert('Faça login')
+    if (!currentPetOwner) return alert('Selecione um pet')
+    const payload = { to_user_id: currentPetOwner.owner, pet_id: currentPetOwner.petId, message: msgText.value }
+    const res = await fetch(`${apiBase}/messages`, { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
+    const data = await res.json()
+    if (data.message) { alert('Mensagem enviada'); msgModal.style.display='none'; msgText.value = '' }
+    else alert(data.error || 'erro')
+  })
+
+  // auto-login if token present
+  if (localStorage.getItem('token')) afterLogin()
+
+  // geocode helper and handler (bound outside initMap so it works when user clicks)
+  async function geocodeAndMark(){
+    const addrEl = document.querySelector('[name="address"]')
+    if (!addrEl) return alert('Campo de endereço não encontrado')
+    const addr = addrEl.value
+    if (!addr) return alert('Digite um endereço para buscar')
+    // ensure map ready
+    if (!map) await initMap()
+    try {
+      const q = encodeURIComponent(addr)
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
+      const results = await res.json()
+      if (!results || results.length === 0) return alert('Endereço não encontrado')
+      const place = results[0]
+      const lat = parseFloat(place.lat)
+      const lon = parseFloat(place.lon)
+      const latInput = document.querySelector('[name="last_seen_lat"]')
+      const lngInput = document.querySelector('[name="last_seen_lng"]')
+      if (latInput && lngInput) { latInput.value = lat; lngInput.value = lon }
+      if (reportMarker) map.removeLayer(reportMarker)
+      reportMarker = L.marker([lat, lon]).addTo(map)
+      map.setView([lat, lon], 15)
+    } catch (err) { console.error('geocode error', err); alert('Erro ao buscar endereço') }
+  }
+
+  const geocodeBtnGlobal = document.getElementById('btn-geocode')
+  if (geocodeBtnGlobal) geocodeBtnGlobal.addEventListener('click', geocodeAndMark)
+
+  // auto-login if token present
+  if (localStorage.getItem('token')) afterLogin()
+
+})

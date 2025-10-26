@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>My Petx</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="site-header">
+        <div class="brand">
+          <div class="brand-left">
+            <img src="/imgs/logo.png" alt="My Petx" class="logo" onerror="this.style.display='none'" />
+            <h1>My Petx</h1>
+          </div>
+          <div class="header-actions">
+            <!-- profile and messages buttons will be injected here -->
+          </div>
+        </div>
+      </header>
+
+      <main class="container">
+        <section id="auth" class="card">
+          <h2 id="auth-title">Entrar</h2>
+          <form id="form-auth">
+            <input id="name" name="name" placeholder="Seu nome (apenas no cadastro)" />
+            <input id="email" name="email" placeholder="email" />
+            <input id="password" name="password" type="password" placeholder="password" />
+            <!-- additional registration fields -->
+            <input id="phone" name="phone" placeholder="Telefone (opcional)" />
+            <input id="city" name="city" placeholder="Cidade (opcional)" />
+              <div class="row">
+                <button id="btn-submit-auth" type="button" class="btn primary">Entrar</button>
+                <button id="btn-toggle-register" type="button" class="btn link">Ainda não tem conta?</button>
+              </div>
+          </form>
+        </section>
+
+        <!-- Map section: fixed at top, centered -->
+        <section id="map-section" style="display:none">
+          <div id="map" style="height:400px; width:100%; max-width:1100px; margin:0 auto"></div>
+        </section>
+
+        <!-- Feed section: grid below map -->
+        <section id="feed" class="feed-section" style="display:none">
+          <div id="pets" class="pets-grid"></div>
+        </section>
+
+        <!-- FAB button to create pet -->
+        <button id="fab-add-pet" class="fab" style="display:none" title="Criar postagem">+</button>
+      </main>
+
+      <!-- Create pet modal -->
+      <div id="create-pet-modal" class="modal" style="display:none">
+        <div class="modal-content card">
+          <button id="btn-close-create-modal" class="close-btn">✕</button>
+          <h3>Criar postagem</h3>
+          <div style="background:#f0f9ff; padding:12px; border-radius:8px; margin-bottom:12px; font-size:14px; color:#0369a1">
+            <strong>📍 Localização:</strong> <span id="location-hint">Clique no mapa ao lado para marcar</span>
+          </div>
+          <form id="form-report">
+            <input name="name" placeholder="Nome do pet" required />
+            <div class="row"><input name="species" placeholder="Espécie" /><input name="breed" placeholder="Raça" /></div>
+            <input name="color" placeholder="Cor" />
+            <select name="status">
+              <option value="Perdido">Perdido</option>
+              <option value="Encontrado">Encontrado</option>
+              <option value="Adoção">Adoção</option>
+            </select>
+            <input name="last_seen_lat" type="hidden" />
+            <input name="last_seen_lng" type="hidden" />
+            <div class="row">
+              <input name="address" placeholder="Endereço (ou clique no mapa)" />
+              <button id="btn-geocode" type="button" class="btn">🔍</button>
+            </div>
+            <input name="reference" placeholder="Referência — opcional" />
+            <input type="date" name="date_lost" placeholder="Data perdido" />
+            <textarea name="description" placeholder="Descrição"></textarea>
+            <input type="file" name="photo" accept="image/*" />
+            <button id="btn-submit-report" class="btn primary" type="button">Publicar</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Pet details modal (view pet + comments) -->
+      <div id="pet-detail-modal" class="modal" style="display:none">
+        <div class="modal-content card modal-large">
+          <button id="btn-close-pet-detail" class="close-btn">✕</button>
+          <div id="pet-detail-content"></div>
+          <hr style="margin:16px 0"/>
+          <h4>Comentários</h4>
+          <div id="pet-detail-comments"></div>
+          <textarea id="pet-detail-comment-input" placeholder="Escreva um comentário..."></textarea>
+          <div class="row"><button id="btn-add-pet-comment" class="btn primary">Comentar</button></div>
+        </div>
+      </div>
+
+      <!-- message modal -->
+      <div id="msg-modal" class="modal" style="display:none">
+        <div class="modal-content card">
+          <h3>Enviar mensagem</h3>
+          <div id="msg-to"></div>
+          <textarea id="msg-text" placeholder="Escreva sua mensagem"></textarea>
+          <div class="row"><button id="btn-send-msg" class="btn primary">Enviar</button><button id="btn-close-msg" class="btn">Fechar</button></div>
+        </div>
+      </div>
+
+      <!-- messages inbox modal -->
+      <!-- <div id="inbox-modal" class="modal" style="display:none">
+        <div class="modal-content card">
+          <h3>Mensagens</h3>
+          <div id="inbox-list" class="inbox-list"></div>
+          <div id="conversation" style="margin-top:12px"></div>
+          <div class="row"><button id="btn-close-inbox" class="btn">Fechar</button></div>
+        </div>
+      </div> -->
+
+      <!-- profile modal -->
+      <div id="profile-modal" class="modal" style="display:none">
+        <div class="modal-content card">
+          <h3>Meu perfil</h3>
+          <form id="profile-form">
+            <input id="profile-name" name="name" placeholder="Nome" />
+            <input id="profile-email" name="email" placeholder="Email" />
+            <input id="profile-phone" name="phone" placeholder="Telefone" />
+            <input id="profile-city" name="city" placeholder="Cidade" />
+            <input id="profile-password" name="password" type="password" placeholder="Nova senha (deixe vazio para manter)" />
+            <div class="row"><button id="btn-save-profile" class="btn primary" type="button">Salvar</button><button id="btn-close-profile" class="btn" type="button">Fechar</button></div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/app.js"></script>
+  </body>
+</html>

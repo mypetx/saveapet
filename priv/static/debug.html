@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Check Console for Errors</h1>
+    <script>
+        console.log('Script loading...');
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded');
+            const userInfo = document.getElementById('user-info');
+            console.log('userInfo element:', userInfo);
+            if (!userInfo) {
+                console.error('ERRO: elemento user-info não encontrado!');
+            }
+        });
+    </script>
+</body>
+</html>
