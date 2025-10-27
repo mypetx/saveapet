@@ -133,3 +133,11 @@ input, textarea, select{ width:100%; padding:10px; border-radius:8px; border:1px
 	.auth-form-wrapper{ padding:30px 20px }
 	.auth-logo h2{ font-size:24px }
 }
+
+/* Hide Leaflet attribution on mobile to prevent overlap with buttons */
+@media (max-width:768px){
+	.leaflet-control-attribution{ display:none !important }
+}
+
+/* Alternatively, move attribution to top-left on mobile */
+.leaflet-bottom.leaflet-right{ z-index:10 }

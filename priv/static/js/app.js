@@ -220,16 +220,22 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap()
       .then(() => {
         console.log('enterWithoutLogin: map initialized, userCity:', userCity)
-        // Aplicar filtros e carregar pets
-        const filters = getFilters()
-        console.log('enterWithoutLogin: applying filters:', filters)
+        
+        // Build filters: use userCity directly if available
+        const filters = {}
+        if (userCity) {
+          // Extract city only (without state)
+          filters.city = userCity.split(',')[0].trim()
+          console.log('enterWithoutLogin: auto-applying city filter:', filters.city)
+        }
+        
+        console.log('enterWithoutLogin: loading pets with filters:', filters)
         loadPets(filters)
       })
       .catch(err => {
         console.error('enterWithoutLogin: map init error:', err)
-        // Load pets with filters even if map fails
-        const filters = getFilters()
-        loadPets(filters)
+        // Load all pets if map fails
+        loadPets({})
       })
   }
 
@@ -264,10 +270,18 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('afterLogin: calling initMap')
     await initMap().catch(err => console.error('map init error:', err))
     
-    // Carregar pets após o mapa estar pronto, aplicando filtros
+    // Carregar pets após o mapa estar pronto
     console.log('afterLogin: loading pets, userCity:', userCity)
-    const filters = getFilters()
-    console.log('afterLogin: applying filters:', filters)
+    
+    // Build filters: use userCity directly if available
+    const filters = {}
+    if (userCity) {
+      // Extract city only (without state)
+      filters.city = userCity.split(',')[0].trim()
+      console.log('afterLogin: auto-applying city filter:', filters.city)
+    }
+    
+    console.log('afterLogin: loading pets with filters:', filters)
     await loadPets(filters)
   }
   // header actions rendering
@@ -676,7 +690,9 @@ document.addEventListener('DOMContentLoaded', () => {
         reportMarker = null
       }
       
-      loadPets()
+      // Recarregar pets com os filtros atuais
+      const filters = getFilters()
+      loadPets(filters)
     } else {
       const errorMsg = data.error || (isEditing ? 'Erro ao atualizar post' : 'Erro ao criar post')
       const details = data.details ? JSON.stringify(data.details) : ''
@@ -807,22 +823,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await res.json()
     
     console.log(`loadPets: fetched ${data.pets.length} pets from API`)
-    console.log('loadPets: userCity =', userCity)
-    console.log('loadPets: filters =', filters)
+    console.log('loadPets: filters received =', filters)
     
-    // Se não foi passado filtro de cidade, mas temos a cidade do usuário, aplicar automaticamente
-    if (!filters.city && userCity) {
-      console.log(`loadPets: auto-applying city filter: ${userCity}`)
-      filters.city = userCity
-      
-      // Atualizar o campo de filtro na UI
+    // Atualizar campos de filtro na UI se filtros foram passados
+    if (filters.city) {
       const cityFilterInput = document.getElementById('filter-city')
       if (cityFilterInput && !cityFilterInput.value) {
-        cityFilterInput.value = userCity
+        cityFilterInput.value = filters.city
       }
     }
     
-    // Mostrar mensagem informativa se tem filtro de cidade
+    if (filters.state) {
+      const stateFilterSelect = document.getElementById('filter-state')
+      if (stateFilterSelect && !stateFilterSelect.value) {
+        stateFilterSelect.value = filters.state
+      }
+    }
+    
+    // Mostrar mensagem informativa se tem filtro ativo
     const filterInfo = document.getElementById('filter-info')
     if (filterInfo) {
       if (filters.city || filters.state || filters.species) {
@@ -1071,7 +1089,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (res.ok) {
               alert('Post excluído com sucesso!')
-              await loadPets()
+              // Recarregar pets com os filtros atuais
+              const filters = getFilters()
+              await loadPets(filters)
             } else {
               const data = await res.json()
               alert(data.error || 'Erro ao excluir post')
