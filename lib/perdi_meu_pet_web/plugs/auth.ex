@@ -12,10 +12,7 @@ defmodule PerdiMeuPetWeb.Plugs.Auth do
           nil -> nil
           id ->
             # use Ecto to fetch user row (works with Postgres)
-            case PerdiMeuPet.Repo.get(PerdiMeuPet.Accounts.User, id) do
-              nil -> nil
-              u -> %{id: u.id, name: u.name, email: u.email, phone: u.phone, city: u.city}
-            end
+            PerdiMeuPet.Repo.get(PerdiMeuPet.Accounts.User, id)
         end
 
       conn |> assign(:current_user, user)

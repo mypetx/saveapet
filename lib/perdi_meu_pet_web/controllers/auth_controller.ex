@@ -48,7 +48,7 @@ defmodule PerdiMeuPetWeb.AuthController do
 
   def me(conn, _params) do
     user = conn.assigns[:current_user]
-    json(conn, %{user: user})
+    json(conn, %{user: %{id: user.id, name: user.name, email: user.email, phone: user.phone, city: user.city}})
   end
 
   def update(conn, params) do

@@ -1,7 +1,7 @@
 :root{ --accent:#ff6f61; --muted:#6b7280; --bg:#f7f7fa; --card:#ffffff }
 *{box-sizing:border-box}
-body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; padding:0; background:var(--bg); color:#111 }
-.site-header{ background:linear-gradient(90deg,var(--accent),#ff8a75); color:white; padding:18px 12px; position:sticky; top:0; z-index:100 }
+body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; padding:0; background:var(--bg); color:#111; padding-top:84px }
+.site-header{ background:linear-gradient(90deg,var(--accent),#ff8a75); color:white; padding:18px 12px; position:fixed; top:0; left:0; right:0; width:100%; z-index:1000; box-shadow:0 2px 8px rgba(0,0,0,0.1) }
 .brand{ display:flex; align-items:center; gap:12px; max-width:1100px; margin:0 auto; width:100% }
 .brand-left{ display:flex; align-items:center; gap:12px }
 .header-actions{ margin-left:auto; display:flex; align-items:center; gap:8px }
@@ -11,46 +11,125 @@ body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", R
 .card{ background:var(--card); border-radius:10px; padding:14px; box-shadow:0 6px 18px rgba(16,24,40,0.06); margin-bottom:12px }
 .row{ display:flex; gap:8px }
 input, textarea, select{ width:100%; padding:10px; border-radius:8px; border:1px solid #e6e6ee; margin:6px 0 }
+/* Custom file input */
+.file-input-wrapper{ margin:6px 0; display:flex; align-items:center; gap:8px }
+.file-input-wrapper input[type="file"]{ display:none }
+.file-input-label{ padding:8px 16px; border-radius:8px; background:#e6e6ee; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:14px; transition:all 0.2s; border:1px solid #e6e6ee }
+.file-input-label:hover{ background:#d1d5db; transform:translateY(-1px) }
+.file-name{ font-size:13px; color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .btn{ padding:8px 12px; border-radius:8px; border:none; cursor:pointer; background:#e6e6ee; transition:all 0.2s }
 .btn:hover{ transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.1) }
 .btn.primary{ background:var(--accent); color:white }
+.btn.btn-secondary{ background:#6b7280; color:white }
+.btn.btn-danger{ background:#dc2626; color:white }
 .btn.icon{ display:inline-flex; align-items:center; justify-content:center; padding:8px; width:40px; height:40px; border-radius:10px }
 .profile-btn{ background:transparent; color:white; border:1px solid rgba(255,255,255,0.2); padding:6px 10px }
 /* profile dropdown */
 .profile-menu{ position:relative }
-.profile-dropdown{ position:absolute; right:0; top:44px; background:var(--card); border-radius:8px; box-shadow:0 8px 24px rgba(2,6,23,0.12); min-width:160px; overflow:hidden; z-index:1000 }
+.profile-dropdown{ position:absolute; right:0; top:44px; background:var(--card); border-radius:8px; box-shadow:0 8px 24px rgba(2,6,23,0.12); min-width:160px; overflow:hidden; z-index:1001 }
 .profile-item{ padding:10px 12px; cursor:pointer; color:#111 }
 .profile-item:hover{ background:#f3f4f6 }
+/* Auth section - Split layout */
+.auth-container{ display:flex; min-height:calc(100vh - 100px); max-width:1000px; margin:40px auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 40px rgba(16,24,40,0.1) }
+.auth-image{ flex:1; background:linear-gradient(135deg, var(--accent), #ff8a75); display:flex; align-items:center; justify-content:center; padding:40px; position:relative; overflow:hidden }
+.auth-image img{ width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0 }
+.auth-form-wrapper{ flex:1; padding:60px 50px; display:flex; flex-direction:column; justify-content:center; max-width:500px }
+.auth-logo{ display:flex; flex-direction:column; align-items:center; margin-bottom:30px; gap:12px }
+.auth-logo h2{ margin:0; font-size:28px; color:var(--accent); font-weight:700 }
+.auth-form-wrapper h3{ margin:0 0 24px 0; font-size:22px; color:#1f2937; text-align:center }
+.auth-form-wrapper input{ background:#f9fafb; border:1px solid #e5e7eb; transition:all 0.2s }
+.auth-form-wrapper input:focus{ outline:none; border-color:var(--accent); background:white; box-shadow:0 0 0 3px rgba(255,111,97,0.1) }
+.auth-form-wrapper .btn.primary{ width:100%; padding:12px; font-size:16px; font-weight:600 }
+.auth-form-wrapper .btn-link{ width:100%; text-align:center; margin-top:8px }
 /* Map section */
-#map-section{ margin:18px auto; padding:0 12px; position:relative; z-index:10 }
+.map-container{ margin-bottom:20px }
 #map{ border-radius:12px; box-shadow:0 8px 24px rgba(16,24,40,0.08) }
+/* Current location marker */
+.current-location-marker{ font-size:24px; text-align:center; line-height:30px; animation:pulse 2s infinite }
+@keyframes pulse{ 0%, 100%{ opacity:1; transform:scale(1) } 50%{ opacity:0.7; transform:scale(1.1) } }
 /* Feed section */
-.feed-section{ max-width:1100px; margin:18px auto; padding:0 12px }
-.pets-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px }
+.feed-section{ max-width:1200px; margin:18px auto; padding:0 12px 0 270px; display:flex; gap:20px; align-items:flex-start }
+.feed-main{ flex:1; display:flex; flex-direction:column; gap:20px }
+/* Filters sidebar */
+.filters-sidebar{ background:var(--card); border-radius:12px; padding:16px; box-shadow:0 4px 16px rgba(16,24,40,0.06); width:240px; flex-shrink:0; position:fixed; left:12px; top:90px; max-height:calc(100vh - 110px); overflow-y:auto; z-index:50 }
+.filters-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #e6e6ee }
+.filters-header h3{ margin:0; font-size:16px; font-weight:600 }
+.btn-link{ background:none; border:none; color:var(--accent); cursor:pointer; font-size:13px; padding:0 }
+.btn-link:hover{ text-decoration:underline }
+.filter-group{ margin-bottom:16px }
+.filter-label{ display:block; font-size:13px; font-weight:500; margin-bottom:6px; color:#374151 }
+.filter-select, .filter-input{ width:100%; padding:8px; border-radius:6px; border:1px solid #e6e6ee; font-size:14px; margin:0 }
+.filter-select:focus, .filter-input:focus{ outline:none; border-color:var(--accent) }
+.filter-checkboxes{ display:flex; flex-direction:column; gap:8px }
+.checkbox-label{ display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px }
+.checkbox-label input[type="checkbox"]{ cursor:pointer; width:16px; height:16px }
+.checkbox-label:hover{ color:var(--accent) }
+.pets-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; flex:1 }
 .pet-card{ background:var(--card); border-radius:12px; overflow:hidden; box-shadow:0 4px 16px rgba(16,24,40,0.06); cursor:pointer; transition:all 0.25s }
 .pet-card:hover{ transform:translateY(-4px); box-shadow:0 12px 32px rgba(16,24,40,0.12) }
 .pet-card img{ width:100%; height:200px; object-fit:cover }
 .pet-meta{ padding:12px }
 .pet-meta strong{ font-size:18px; display:block; margin-bottom:4px }
 .muted{ color:var(--muted); font-size:13px }
+/* Status badges */
+.status-badge{ display:inline-block; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:600; margin-top:6px; margin-bottom:2px }
+.status-lost{ background:#fef3c7; color:#92400e; border:1px solid #fde68a }
+.status-found{ background:#d1fae5; color:#065f46; border:1px solid #a7f3d0 }
+/* Card menu */
+.card-menu-btn{ position:absolute; top:8px; right:8px; background:rgba(255,255,255,0.95); border:none; width:32px; height:32px; border-radius:6px; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.15); z-index:10; transition:all 0.2s }
+.card-menu-btn:hover{ background:white; box-shadow:0 4px 12px rgba(0,0,0,0.2); transform:scale(1.05) }
+.card-menu-dropdown{ position:absolute; top:44px; right:8px; background:white; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:140px; overflow:hidden; z-index:100 }
+.card-menu-item{ padding:10px 14px; cursor:pointer; font-size:14px; transition:background 0.2s; display:flex; align-items:center; gap:6px }
+.card-menu-item:hover{ background:#f3f4f6 }
+.card-menu-danger:hover{ background:#fee2e2; color:#dc2626 }
 /* FAB button */
 .fab{ position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:var(--accent); color:white; border:none; font-size:28px; box-shadow:0 8px 24px rgba(255,111,97,0.4); cursor:pointer; z-index:500; transition:all 0.3s }
 .fab:hover{ transform:scale(1.1) rotate(90deg); box-shadow:0 12px 32px rgba(255,111,97,0.6) }
 /* Modal improvements */
 .modal{ position:fixed; left:0; top:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.15); z-index:9999 }
-.modal-content{ width:90%; max-width:540px; z-index:10000; max-height:90vh; overflow-y:auto; position:relative }
+.modal-content{ width:90%; max-width:540px; z-index:10000; max-height:90vh; position:relative; overflow:hidden }
+.modal-scroll-content{ max-height:90vh; overflow-y:auto; padding:20px }
 .modal-large{ max-width:720px }
 /* Modal de criação - lado a lado com mapa */
 #create-pet-modal{ background:transparent; align-items:stretch; padding:0; pointer-events:none }
 #create-pet-modal .modal-content{ width:400px; max-width:400px; height:100vh; max-height:100vh; margin-left:auto; border-radius:0; box-shadow:-4px 0 24px rgba(0,0,0,0.2); pointer-events:auto }
-.close-btn{ position:absolute; top:12px; right:12px; background:transparent; border:none; font-size:24px; cursor:pointer; color:var(--muted); transition:color 0.2s; z-index:1 }
-.close-btn:hover{ color:#111 }
+.close-btn{ position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.95); border:none; font-size:24px; cursor:pointer; color:var(--muted); transition:all 0.2s; z-index:10001; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.1) }
+.close-btn:hover{ color:#111; background:white; transform:scale(1.1) }
+/* Comments section - Instagram style */
+.comment-bubble{ margin-bottom:16px; padding-bottom:16px; display:flex; gap:12px; animation:fadeIn 0.3s ease-out; border-bottom:1px solid #efefef }
+.comment-bubble:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0 }
+@keyframes fadeIn{ from{ opacity:0 } to{ opacity:1 } }
+.comment-bubble-other{ width:100% }
+.comment-bubble-own{ width:100% }
+.comment-bubble-other > div, .comment-bubble-own > div{ background:transparent; border-radius:0; padding:0; box-shadow:none }
+.comment-header{ display:flex; align-items:baseline; gap:8px; margin-bottom:4px }
+.comment-author{ font-weight:600; font-size:14px; color:#262626 }
+.comment-time{ font-size:12px; color:#8e8e8e; font-weight:400 }
+.comment-edited{ font-size:11px; color:#999; font-style:italic; margin-left:4px }
+.comment-body{ font-size:14px; line-height:1.5; word-wrap:break-word; color:#262626 }
+.comment-actions{ margin-left:auto; display:flex; gap:4px }
+.btn-comment-action{ background:none; border:none; cursor:pointer; font-size:14px; padding:4px 8px; border-radius:4px; transition:background 0.2s }
+.btn-comment-action:hover{ background:#f0f0f0 }
+#pet-detail-comments{ max-height:400px; overflow-y:auto; padding:16px; background:white; border-radius:0; margin-bottom:12px; display:flex; flex-direction:column }
+#pet-detail-comments::-webkit-scrollbar{ width:6px }
+#pet-detail-comments::-webkit-scrollbar-track{ background:#f1f1f1; border-radius:10px }
+#pet-detail-comments::-webkit-scrollbar-thumb{ background:#888; border-radius:10px }
+#pet-detail-comments::-webkit-scrollbar-thumb:hover{ background:#555 }
 
 @media (max-width:900px){
 	.pets-grid{ grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)) }
 	#create-pet-modal .modal-content{ width:100%; max-width:100%; height:70vh; max-height:70vh; margin-top:auto; border-radius:12px 12px 0 0 }
 	#create-pet-modal{ align-items:flex-end }
+	.feed-section{ flex-direction:column; padding:0 12px }
+	.feed-main{ width:100% }
+	.filters-sidebar{ width:calc(100% - 24px); position:static; max-height:none; left:auto; top:auto }
+	/* Auth responsive */
+	.auth-container{ flex-direction:column; margin:20px }
+	.auth-image{ min-height:200px; padding:20px }
+	.auth-form-wrapper{ padding:40px 30px; max-width:100% }
 }
 @media (max-width:600px){
 	.pets-grid{ grid-template-columns:1fr }
+	.auth-form-wrapper{ padding:30px 20px }
+	.auth-logo h2{ font-size:24px }
 }

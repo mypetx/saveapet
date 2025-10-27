@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentUser = null
   let reportMarker = null
   let map = null
+  let userCity = null // Cidade do usuário baseada na geolocalização
   let currentPetDetail = null
 
   let isRegister = false
@@ -83,8 +84,161 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
+  // Allow Enter key to submit login form
+  formAuth.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      btnSubmitAuth.click()
+    }
+  })
+
+  // Helper function to normalize text for comparison (remove accents, lowercase, trim)
+  function normalizeText(text) {
+    if (!text) return ''
+    return text
+      .toLowerCase()
+      .normalize('NFD') // Decompose accented characters
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
+      .trim()
+  }
+
+  // Helper function to get state abbreviation from full name
+  function getStateAbbreviation(stateName) {
+    if (!stateName) return null
+    
+    const stateMap = {
+      'acre': 'AC',
+      'alagoas': 'AL',
+      'amapa': 'AP',
+      'amazonas': 'AM',
+      'bahia': 'BA',
+      'ceara': 'CE',
+      'distrito federal': 'DF',
+      'espirito santo': 'ES',
+      'goias': 'GO',
+      'maranhao': 'MA',
+      'mato grosso': 'MT',
+      'mato grosso do sul': 'MS',
+      'minas gerais': 'MG',
+      'para': 'PA',
+      'paraiba': 'PB',
+      'parana': 'PR',
+      'pernambuco': 'PE',
+      'piaui': 'PI',
+      'rio de janeiro': 'RJ',
+      'rio grande do norte': 'RN',
+      'rio grande do sul': 'RS',
+      'rondonia': 'RO',
+      'roraima': 'RR',
+      'santa catarina': 'SC',
+      'sao paulo': 'SP',
+      'sergipe': 'SE',
+      'tocantins': 'TO'
+    }
+    
+    const normalized = normalizeText(stateName)
+    return stateMap[normalized] || null
+  }
+
+  // Helper function to get current filter values from UI
+  function getFilters() {
+    const filters = {}
+    
+    // Get species filter
+    const filterSpecies = document.getElementById('filter-species')
+    if (filterSpecies && filterSpecies.value) {
+      filters.species = filterSpecies.value
+    }
+    
+    // Get city filter
+    const filterCity = document.getElementById('filter-city')
+    if (filterCity && filterCity.value.trim()) {
+      filters.city = filterCity.value.trim()
+    }
+    
+    // Get state filter
+    const filterState = document.getElementById('filter-state')
+    if (filterState && filterState.value) {
+      filters.state = filterState.value
+    }
+    
+    // Get status filters (only checked ones)
+    const filterStatusCheckboxes = document.querySelectorAll('.filter-status')
+    const checkedStatuses = Array.from(filterStatusCheckboxes)
+      .filter(cb => cb.checked)
+      .map(cb => cb.value)
+    
+    if (checkedStatuses.length > 0 && checkedStatuses.length < 3) {
+      filters.status = checkedStatuses
+    }
+    
+    return filters
+  }
+
+  // Continue without login button
+  const btnContinueWithoutLogin = document.getElementById('btn-continue-without-login')
+  if (btnContinueWithoutLogin) {
+    btnContinueWithoutLogin.addEventListener('click', () => {
+      enterWithoutLogin()
+    })
+  }
+
+  function enterWithoutLogin() {
+    console.log('enterWithoutLogin: entering app without authentication')
+    
+    // Save state to persist across page reloads
+    localStorage.setItem('viewMode', 'guest')
+    
+    authSection.style.display = 'none'
+    
+    const mapSection = document.getElementById('map-section')
+    const feedSection = document.getElementById('feed')
+    const fabButton = document.getElementById('fab-add-pet')
+    
+    if (!mapSection || !feedSection) {
+      console.error('enterWithoutLogin: missing elements', { mapSection, feedSection })
+      alert('Erro: elementos da interface não encontrados')
+      return
+    }
+    
+    mapSection.style.display = 'block'
+    feedSection.style.display = 'block'
+    if (fabButton) fabButton.style.display = 'none' // Hide FAB button for non-logged users
+    
+    console.log('enterWithoutLogin: sections displayed')
+    
+    // Don't load user data
+    currentUser = null
+    
+    // Render guest header with login button
+    renderGuestHeaderButtons()
+    
+    // Initialize map first
+    console.log('enterWithoutLogin: calling initMap')
+    
+    // Wait for map initialization (which includes geolocation)
+    initMap()
+      .then(() => {
+        console.log('enterWithoutLogin: map initialized, userCity:', userCity)
+        // Aplicar filtros e carregar pets
+        const filters = getFilters()
+        console.log('enterWithoutLogin: applying filters:', filters)
+        loadPets(filters)
+      })
+      .catch(err => {
+        console.error('enterWithoutLogin: map init error:', err)
+        // Load pets with filters even if map fails
+        const filters = getFilters()
+        loadPets(filters)
+      })
+  }
+
   async function afterLogin(){
     console.log('afterLogin: called')
+    
+    // Clear guest mode and save authenticated state
+    localStorage.removeItem('viewMode')
+    
     authSection.style.display = 'none'
     // show new layout: map + feed + FAB
     const mapSection = document.getElementById('map-section')
@@ -105,13 +259,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     await loadMe()
     renderHeaderButtons()
-    await loadPets()
     
-    // Inicializar mapa por último, depois que tudo está visível
-    setTimeout(() => {
-      console.log('afterLogin: calling initMap')
-      initMap().catch(err => console.error('map init error:', err))
-    }, 300)
+    // Inicializar mapa primeiro
+    console.log('afterLogin: calling initMap')
+    await initMap().catch(err => console.error('map init error:', err))
+    
+    // Carregar pets após o mapa estar pronto, aplicando filtros
+    console.log('afterLogin: loading pets, userCity:', userCity)
+    const filters = getFilters()
+    console.log('afterLogin: applying filters:', filters)
+    await loadPets(filters)
   }
   // header actions rendering
   function ensureHeaderActions(){
@@ -168,6 +325,39 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => { const dd = profWrap.querySelector('.profile-dropdown'); if (dd) dd.style.display='none' })
   }
 
+  function renderGuestHeaderButtons(){
+    const actions = ensureHeaderActions()
+    actions.innerHTML = ''
+    
+    // Login button for guest users
+    const loginBtn = document.createElement('button')
+    loginBtn.className = 'btn primary'
+    loginBtn.innerText = 'Fazer Login'
+    loginBtn.style.padding = '8px 20px'
+    loginBtn.addEventListener('click', () => {
+      returnToLogin()
+    })
+    actions.appendChild(loginBtn)
+  }
+
+  function returnToLogin(){
+    // Clear guest mode
+    localStorage.removeItem('viewMode')
+    
+    // Reset state
+    currentUser = null
+    const actions = document.querySelector('.header-actions')
+    if (actions) actions.innerHTML = ''
+    
+    // Hide feed and map
+    document.getElementById('map-section').style.display = 'none'
+    document.getElementById('feed').style.display = 'none'
+    document.getElementById('fab-add-pet').style.display = 'none'
+    
+    // Show auth screen
+    document.getElementById('auth').style.display = 'flex'
+  }
+
   function openProfile(){
     if (!currentUser) return alert('Faça login')
     document.getElementById('profile-name').value = currentUser.name || ''
@@ -209,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function doLogout(){
     localStorage.removeItem('token')
+    localStorage.removeItem('viewMode')
     currentUser = null
     // hide profile modal if open
     const pm = document.getElementById('profile-modal')
@@ -216,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // hide create pet modal if open
     const cm = document.getElementById('create-pet-modal')
     if (cm) cm.style.display = 'none'
-    document.getElementById('auth').style.display = 'block'
+    document.getElementById('auth').style.display = 'flex'
     document.getElementById('map-section').style.display = 'none'
     document.getElementById('feed').style.display = 'none'
     document.getElementById('fab-add-pet').style.display = 'none'
@@ -251,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       console.log('initMap: creating map instance')
+      // Coordenadas padrão (São Paulo) caso geolocalização falhe
       map = L.map('map').setView([-23.55, -46.63], 12)
       
       console.log('initMap: adding tile layer')
@@ -261,13 +453,88 @@ document.addEventListener('DOMContentLoaded', () => {
       
       console.log('initMap: map created successfully')
       
-      // Forçar re-render do mapa após um delay
-      setTimeout(() => { 
-        if (map) {
-          console.log('initMap: forcing size recalculation')
-          map.invalidateSize()
-        }
-      }, 500)
+      // Tentar obter localização atual do usuário
+      if (navigator.geolocation) {
+        console.log('initMap: requesting geolocation')
+        await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const lat = position.coords.latitude
+              const lng = position.coords.longitude
+              console.log('initMap: geolocation success', { lat, lng })
+              
+              // Centralizar mapa na localização atual
+              map.setView([lat, lng], 13)
+              
+              // Adicionar marcador na localização atual (opcional)
+              L.marker([lat, lng], {
+                isCurrentLocation: true,
+                icon: L.divIcon({
+                  className: 'current-location-marker',
+                  html: '📍',
+                  iconSize: [30, 30]
+                })
+              }).addTo(map).bindPopup('Você está aqui')
+              
+              // Obter cidade através de geocodificação reversa (Nominatim)
+              try {
+                const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`)
+                if (geoRes.ok) {
+                  const geoData = await geoRes.json()
+                  if (geoData.address) {
+                    const city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality
+                    const state = geoData.address.state
+                    
+                    // Build user city with state to be more specific
+                    if (city && state) {
+                      userCity = `${city}, ${state}`
+                    } else if (city) {
+                      userCity = city
+                    }
+                    
+                    console.log('initMap: user location detected:', userCity)
+                    
+                    // Atualizar os campos de filtro de cidade e estado
+                    const cityFilterInput = document.getElementById('filter-city')
+                    if (cityFilterInput && city) {
+                      cityFilterInput.value = city
+                    }
+                    
+                    // Map state names to abbreviations
+                    const stateAbbr = getStateAbbreviation(state)
+                    const stateFilterSelect = document.getElementById('filter-state')
+                    if (stateFilterSelect && stateAbbr) {
+                      stateFilterSelect.value = stateAbbr
+                    }
+                  }
+                }
+              } catch (err) {
+                console.warn('initMap: reverse geocoding failed', err)
+              }
+              
+              resolve()
+            },
+            (error) => {
+              console.warn('initMap: geolocation error', error.message)
+              // Continua com localização padrão
+              resolve()
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            }
+          )
+        })
+      } else {
+        console.warn('initMap: geolocation not supported')
+      }
+      
+      // Forçar re-render do mapa
+      if (map) {
+        console.log('initMap: forcing size recalculation')
+        map.invalidateSize()
+      }
       
       // click to place marker for reporting
       map.on('click', function(e){
@@ -318,9 +585,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Custom file input - show file name
+  const photoInput = document.getElementById('photo-input')
+  const fileNameSpan = document.getElementById('file-name')
+  if (photoInput && fileNameSpan) {
+    photoInput.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        fileNameSpan.textContent = this.files[0].name
+      } else {
+        fileNameSpan.textContent = ''
+      }
+    })
+  }
+
   btnSubmitReport.addEventListener('click', async () => {
     const token = localStorage.getItem('token')
     if (!token) return alert('Faça login primeiro')
+    
+    const isEditing = currentEditingPet !== null
+    
     // auto-geocode if lat/lng empty and address provided
     const latInput = document.querySelector('[name="last_seen_lat"]')
     const lngInput = document.querySelector('[name="last_seen_lng"]')
@@ -356,14 +639,36 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el.type === 'file') { if (el.files && el.files[0]) fd.append(el.name, el.files[0]) }
       else fd.append(el.name, el.value)
     })
-    const res = await fetch(`${apiBase}/pets`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
+    
+    // Add _method for Phoenix Plug.MethodOverride when editing
+    if (isEditing) {
+      fd.append('_method', 'PATCH')
+    }
+    
+    const url = isEditing ? `${apiBase}/pets/${currentEditingPet.id}` : `${apiBase}/pets`
+    const method = isEditing ? 'POST' : 'POST' // Use POST for both, _method will handle PATCH
+    
+    console.log('Submitting pet:', { isEditing, url, method })
+    
+    const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` }, body: fd })
     const data = await res.json()
+    
+    console.log('Response:', { status: res.status, data })
+    
     if (data.pet) {
-      alert('Post criado com sucesso!')
+      alert(isEditing ? 'Post atualizado com sucesso!' : 'Post criado com sucesso!')
       formReport.reset()
       
+      // Reset editing state
+      currentEditingPet = null
+      const modal = document.getElementById('create-pet-modal')
+      const title = modal.querySelector('h3')
+      const submitBtn = document.getElementById('btn-submit-report')
+      if (title) title.textContent = 'Criar postagem'
+      if (submitBtn) submitBtn.textContent = 'Criar'
+      
       // Fechar modal e resetar UI
-      document.getElementById('create-pet-modal').style.display = 'none'
+      modal.style.display = 'none'
       const hint = document.getElementById('location-hint')
       if (hint) hint.textContent = 'Clique no mapa ao lado para marcar'
       if (reportMarker) {
@@ -373,7 +678,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       loadPets()
     } else {
-      alert(data.error || 'Erro ao criar post')
+      const errorMsg = data.error || (isEditing ? 'Erro ao atualizar post' : 'Erro ao criar post')
+      const details = data.details ? JSON.stringify(data.details) : ''
+      alert(errorMsg + (details ? '\n' + details : ''))
+      console.error('Submit error:', data)
     }
   })
 
@@ -405,8 +713,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseCreateModal = document.getElementById('btn-close-create-modal')
   if (btnCloseCreateModal) {
     btnCloseCreateModal.addEventListener('click', function() {
-      document.getElementById('create-pet-modal').style.display = 'none'
+      const modal = document.getElementById('create-pet-modal')
+      modal.style.display = 'none'
       formReport.reset()
+      
+      // Reset editing state
+      currentEditingPet = null
+      const title = modal.querySelector('h3')
+      const submitBtn = document.getElementById('btn-submit-report')
+      if (title) title.textContent = 'Criar postagem'
+      if (submitBtn) submitBtn.textContent = 'Criar'
+      
       const hint = document.getElementById('location-hint')
       if (hint) hint.textContent = 'Clique no mapa ao lado para marcar'
       if (reportMarker) {
@@ -480,42 +797,326 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
-  async function loadPets(){
+  async function loadPets(filters = {}){
     const token = localStorage.getItem('token')
     const res = await fetch(`${apiBase}/pets`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    if (!res.ok) return
+    if (!res.ok) {
+      console.error('loadPets: fetch failed', res.status)
+      return
+    }
     const data = await res.json()
+    
+    console.log(`loadPets: fetched ${data.pets.length} pets from API`)
+    console.log('loadPets: userCity =', userCity)
+    console.log('loadPets: filters =', filters)
+    
+    // Se não foi passado filtro de cidade, mas temos a cidade do usuário, aplicar automaticamente
+    if (!filters.city && userCity) {
+      console.log(`loadPets: auto-applying city filter: ${userCity}`)
+      filters.city = userCity
+      
+      // Atualizar o campo de filtro na UI
+      const cityFilterInput = document.getElementById('filter-city')
+      if (cityFilterInput && !cityFilterInput.value) {
+        cityFilterInput.value = userCity
+      }
+    }
+    
+    // Mostrar mensagem informativa se tem filtro de cidade
+    const filterInfo = document.getElementById('filter-info')
+    if (filterInfo) {
+      if (filters.city || filters.state || filters.species) {
+        const parts = []
+        if (filters.city) parts.push(filters.city)
+        if (filters.state && !filters.city) parts.push(filters.state)
+        if (filters.species) parts.push(filters.species)
+        filterInfo.textContent = `📍 Mostrando pets de ${parts.join(', ')}`
+        filterInfo.style.display = 'block'
+      } else {
+        filterInfo.style.display = 'none'
+      }
+    }
+    
+    // Apply filters
+    let filteredPets = data.pets
+    
+    // Filter by species
+    if (filters.species) {
+      filteredPets = filteredPets.filter(p => p.species && p.species.toLowerCase().includes(filters.species.toLowerCase()))
+    }
+    
+    // Filter by city (with normalization to handle accents and case)
+    // Also searches in state to differentiate cities with same name (e.g., "Bonito, MS" vs "Bonito, PE")
+    if (filters.city) {
+      const normalizedFilterCity = normalizeText(filters.city)
+      filteredPets = filteredPets.filter(p => {
+        if (!p.city && !p.state) return false
+        
+        // Build full location string: "city, state"
+        const locationParts = []
+        if (p.city) locationParts.push(p.city)
+        if (p.state) locationParts.push(p.state)
+        const fullLocation = locationParts.join(', ')
+        
+        const normalizedFullLocation = normalizeText(fullLocation)
+        const normalizedPetCity = normalizeText(p.city || '')
+        const normalizedPetState = normalizeText(p.state || '')
+        
+        // Match if filter appears in city, state, or full location
+        return normalizedFullLocation.includes(normalizedFilterCity) ||
+               normalizedPetCity.includes(normalizedFilterCity) ||
+               normalizedPetState.includes(normalizedFilterCity)
+      })
+      console.log(`loadPets: filtered by city '${filters.city}': ${filteredPets.length} pets`)
+    }
+    
+    // Filter by state
+    if (filters.state) {
+      filteredPets = filteredPets.filter(p => p.state && p.state === filters.state)
+      console.log(`loadPets: filtered by state '${filters.state}': ${filteredPets.length} pets`)
+    }
+    
+    // Filter by status
+    if (filters.status && filters.status.length > 0) {
+      filteredPets = filteredPets.filter(p => filters.status.includes(p.status))
+    }
+    
     petsDiv.innerHTML = ''
-    data.pets.forEach(p => {
+    
+    // Clear existing pet markers (but keep current location marker)
+    if (map) {
+      map.eachLayer(function (layer) {
+        if (layer instanceof L.Marker && !layer.options.icon && !layer.options.isCurrentLocation) {
+          map.removeLayer(layer)
+        }
+      })
+    }
+    
+    // Group pets by location for markers
+    const petsByLocation = {}
+    
+    filteredPets.forEach(p => {
       const card = document.createElement('div')
       card.className = 'pet-card'
       card.dataset.petId = p.id
+      card.style.position = 'relative'
+      
       const img = document.createElement('img')
       img.src = p.photo_url || '/favicon.ico'
+      
+      // Check if current user is the owner
+      const isOwner = currentUser && currentUser.id === p.user_id
+      
+      // Add menu button if owner
+      if (isOwner) {
+        const menuBtn = document.createElement('button')
+        menuBtn.className = 'card-menu-btn'
+        menuBtn.innerHTML = '⋮'
+        menuBtn.onclick = function(e) {
+          e.stopPropagation()
+          toggleCardMenu(p.id)
+        }
+        
+        const menuDropdown = document.createElement('div')
+        menuDropdown.className = 'card-menu-dropdown'
+        menuDropdown.id = `menu-${p.id}`
+        menuDropdown.style.display = 'none'
+        menuDropdown.innerHTML = `
+          <div class="card-menu-item" data-action="edit" data-pet-id="${p.id}">✏️ Editar</div>
+          <div class="card-menu-item card-menu-danger" data-action="delete" data-pet-id="${p.id}">🗑️ Excluir</div>
+        `
+        
+        card.appendChild(menuBtn)
+        card.appendChild(menuDropdown)
+      }
+      
       const meta = document.createElement('div')
       meta.className = 'pet-meta'
+      
+      // Build location string
+      let locationStr = ''
+      if (p.city) {
+        locationStr = p.city
+        if (p.state) locationStr += `, ${p.state}`
+        if (p.country && p.country !== 'Brasil') locationStr += ` - ${p.country}`
+      }
+      
+      // Status badge styling based on status
+      let statusClass = 'status-badge'
+      let statusEmoji = '📌'
+      if (p.status && p.status.toLowerCase().includes('encontrado')) {
+        statusClass += ' status-found'
+        statusEmoji = '✅'
+      } else if (p.status && p.status.toLowerCase().includes('perdido')) {
+        statusClass += ' status-lost'
+        statusEmoji = '🔍'
+      }
+      
       meta.innerHTML = `
         <strong>${p.name || 'Sem nome'}</strong>
         <div class='muted'>${p.species || ''} • ${p.breed || ''}</div>
-        <div class='muted'>Status: ${p.status||''}</div>
+        <div class='${statusClass}'>${statusEmoji} ${p.status||'Sem status'}</div>
+        ${locationStr ? `<div class='muted' style='margin-top:4px'>📍 ${locationStr}</div>` : ''}
         <div style='margin-top:8px; padding-top:8px; border-top:1px solid #e6e6ee'>
           <span style='font-size:13px; color:#6b7280'>💬 Ver detalhes e comentários</span>
         </div>
       `
       card.appendChild(img)
       card.appendChild(meta)
-      card.addEventListener('click', function() {
+      card.addEventListener('click', function(e) {
+        // Don't open detail if clicking on menu
+        if (e.target.closest('.card-menu-btn') || e.target.closest('.card-menu-dropdown')) {
+          return
+        }
         console.log('CARD CLICKED for pet:', p.name, p.id)
         openPetDetail(p)
       })
       petsDiv.appendChild(card)
       console.log('Card added for pet:', p.name)
 
+      // Group pets by location for markers
       if (p.last_seen_lat && p.last_seen_lng && map) {
-        const marker = L.marker([p.last_seen_lat, p.last_seen_lng]).addTo(map)
-        marker.bindPopup(`<b>${p.name||'Pet'}</b><br>${p.species||''}<br>Status: ${p.status||''}`)
+        const locationKey = `${p.last_seen_lat.toFixed(6)},${p.last_seen_lng.toFixed(6)}`
+        if (!petsByLocation[locationKey]) {
+          petsByLocation[locationKey] = {
+            lat: p.last_seen_lat,
+            lng: p.last_seen_lng,
+            pets: []
+          }
+        }
+        petsByLocation[locationKey].pets.push(p)
       }
     })
+    
+    // Create markers for each location with grouped pets
+    Object.values(petsByLocation).forEach(location => {
+      const { lat, lng, pets } = location
+      
+      console.log(`Creating marker at ${lat},${lng} for ${pets.length} pet(s)`)
+      
+      const marker = L.marker([lat, lng]).addTo(map)
+      
+      // Build popup content
+      let popupContent = '<div style="max-width:250px;">'
+      
+      if (pets.length === 1) {
+        const p = pets[0]
+        let locationStr = ''
+        if (p.city) {
+          locationStr = p.city
+          if (p.state) locationStr += `, ${p.state}`
+        }
+        
+        popupContent += `
+          <div style="text-align:center;">
+            <b>${p.name||'Pet'}</b><br>
+            ${p.species||''} ${p.breed ? '• ' + p.breed : ''}<br>
+            <span style="color:#666;">Status: ${p.status||''}</span><br>
+            ${locationStr ? `<span style="color:#666; font-size:12px;">📍 ${locationStr}</span><br>` : ''}
+            <button onclick="window.openPetFromMap(${p.id})" style="margin-top:8px; padding:6px 12px; background:#ff6f61; color:white; border:none; border-radius:6px; cursor:pointer; font-size:13px;">Ver detalhes</button>
+          </div>
+        `
+      } else {
+        // Multiple pets at same location
+        popupContent += `<div style="text-align:center; margin-bottom:10px;"><b>${pets.length} pets neste local</b></div>`
+        
+        pets.forEach((p, idx) => {
+          popupContent += `
+            <div style="border-top:${idx > 0 ? '1px solid #eee' : 'none'}; padding:8px 0; text-align:center;">
+              <b>${p.name||'Pet'}</b><br>
+              <span style="font-size:13px; color:#666;">${p.species||''} ${p.breed ? '• ' + p.breed : ''}</span><br>
+              <span style="font-size:12px; color:#999;">Status: ${p.status||''}</span><br>
+              <button onclick="window.openPetFromMap(${p.id})" style="margin-top:6px; padding:4px 10px; background:#ff6f61; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">Ver detalhes</button>
+            </div>
+          `
+        })
+      }
+      
+      popupContent += '</div>'
+      
+      marker.bindPopup(popupContent)
+      
+      // Click on marker opens popup
+      marker.on('click', function() {
+        this.openPopup()
+      })
+    })
+    
+    console.log(`loadPets: rendered ${filteredPets.length} pet cards and markers`)
+    
+    // Attach menu item handlers
+    document.querySelectorAll('.card-menu-item').forEach(item => {
+      item.addEventListener('click', async function(e) {
+        e.stopPropagation()
+        const action = this.getAttribute('data-action')
+        const petId = parseInt(this.getAttribute('data-pet-id'))
+        const pet = data.pets.find(p => p.id === petId)
+        
+        // Close menu
+        document.querySelectorAll('.card-menu-dropdown').forEach(m => m.style.display = 'none')
+        
+        if (action === 'edit' && pet) {
+          openEditPetModal(pet)
+        } else if (action === 'delete' && pet) {
+          if (!confirm('Tem certeza que deseja excluir este post?')) return
+          
+          const token = localStorage.getItem('token')
+          if (!token) { alert('Faça login'); return }
+          
+          try {
+            const res = await fetch(`${apiBase}/pets/${petId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            
+            if (res.ok) {
+              alert('Post excluído com sucesso!')
+              await loadPets()
+            } else {
+              const data = await res.json()
+              alert(data.error || 'Erro ao excluir post')
+            }
+          } catch (e) {
+            console.error('Delete error:', e)
+            alert('Erro ao excluir post')
+          }
+        }
+      })
+    })
+  }
+  
+  function toggleCardMenu(petId) {
+    const menu = document.getElementById(`menu-${petId}`)
+    const isVisible = menu.style.display === 'block'
+    
+    // Close all menus first
+    document.querySelectorAll('.card-menu-dropdown').forEach(m => m.style.display = 'none')
+    
+    // Toggle current menu
+    if (!isVisible) {
+      menu.style.display = 'block'
+    }
+  }
+  
+  // Close menus when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.card-menu-btn') && !e.target.closest('.card-menu-dropdown')) {
+      document.querySelectorAll('.card-menu-dropdown').forEach(m => m.style.display = 'none')
+    }
+  })
+
+  // Global function to open pet from map marker
+  window.openPetFromMap = async function(petId) {
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${apiBase}/pets/${petId}`, { 
+      headers: token ? { Authorization: `Bearer ${token}` } : {} 
+    })
+    if (res.ok) {
+      const data = await res.json()
+      openPetDetail(data.pet)
+    } else {
+      alert('Erro ao carregar detalhes do pet')
+    }
   }
 
   async function openPetDetail(pet){
@@ -535,37 +1136,80 @@ document.addEventListener('DOMContentLoaded', () => {
       return
     }
     
+    // Build location string
+    let locationStr = ''
+    if (pet.city) {
+      locationStr = pet.city
+      if (pet.state) locationStr += `, ${pet.state}`
+      if (pet.country) locationStr += ` - ${pet.country}`
+    }
+    
+    // Build contact info
+    let contactInfo = '<div style="background:#f0f9ff; padding:12px; border-radius:8px; margin-top:12px; border-left:3px solid var(--accent)">'
+    contactInfo += '<h3 style="margin:0 0 8px 0; font-size:16px; color:#0369a1">📞 Informações de Contato</h3>'
+    
+    if (pet.owner_name) {
+      contactInfo += `<p style="margin:4px 0"><strong>Nome:</strong> ${pet.owner_name}</p>`
+    }
+    
+    if (pet.owner_email) {
+      contactInfo += `<p style="margin:4px 0"><strong>Email:</strong> <a href="mailto:${pet.owner_email}" style="color:var(--accent)">${pet.owner_email}</a></p>`
+    }
+    if (pet.owner_phone) {
+      contactInfo += `<p style="margin:4px 0"><strong>Telefone:</strong> <a href="tel:${pet.owner_phone}" style="color:var(--accent)">${pet.owner_phone}</a></p>`
+    }
+    
+    if (!pet.owner_name && !pet.owner_email && !pet.owner_phone) {
+      contactInfo += '<p style="margin:4px 0; color:#6b7280">Informações de contato não disponíveis</p>'
+    }
+    
+    contactInfo += '</div>'
+    
     content.innerHTML = `
       <img src="${pet.photo_url||'/favicon.ico'}" style="width:100%; max-height:300px; object-fit:cover; border-radius:8px; margin-bottom:12px"/>
       <h2>${pet.name || 'Sem nome'}</h2>
       <p><strong>Espécie:</strong> ${pet.species||'N/A'} • <strong>Raça:</strong> ${pet.breed||'N/A'}</p>
       <p><strong>Cor:</strong> ${pet.color||'N/A'}</p>
       <p><strong>Status:</strong> ${pet.status||'N/A'}</p>
+      ${locationStr ? `<p><strong>Localização:</strong> ${locationStr}</p>` : ''}
       <p><strong>Descrição:</strong> ${pet.description||'Sem descrição'}</p>
       <p><strong>Endereço:</strong> ${pet.address||'N/A'} ${pet.reference ? '('+pet.reference+')' : ''}</p>
-      <div class="row"><button class="btn" id="detail-contact-owner">Entrar em contato</button></div>
+      ${contactInfo}
     `
     
     console.log('Content populated, setting modal display to flex')
     modal.style.display = 'flex'
     console.log('Modal display set. Current style:', modal.style.display)
     
+    // Hide comment input if user not logged in
+    const commentInput = document.getElementById('pet-detail-comment-input')
+    const commentButton = document.getElementById('btn-add-pet-comment')
+    
+    if (!currentUser) {
+      if (commentInput) commentInput.style.display = 'none'
+      if (commentButton) commentButton.style.display = 'none'
+      
+      // Show login button
+      const commentSection = commentInput?.parentElement
+      if (commentSection && !document.getElementById('login-comment-msg')) {
+        const loginMsg = document.createElement('div')
+        loginMsg.id = 'login-comment-msg'
+        loginMsg.style.cssText = 'background:#fef3c7; padding:16px; border-radius:8px; text-align:center; margin-top:12px'
+        loginMsg.innerHTML = `
+          <p style="margin:0 0 12px 0; color:#92400e; font-weight:500">🔒 Para comentar é necessário fazer login</p>
+          <button onclick="goToLogin()" class="btn primary" style="padding:8px 24px; font-size:14px">Fazer Login</button>
+        `
+        commentSection.appendChild(loginMsg)
+      }
+    } else {
+      if (commentInput) commentInput.style.display = 'block'
+      if (commentButton) commentButton.style.display = 'inline-block'
+      const loginMsg = document.getElementById('login-comment-msg')
+      if (loginMsg) loginMsg.remove()
+    }
+    
     console.log('Loading comments for pet:', pet.id)
     await loadPetComments(pet.id)
-    
-    // attach contact handler
-    const contactBtn = content.querySelector('#detail-contact-owner')
-    if (contactBtn) {
-      console.log('Contact button found, adding listener')
-      contactBtn.addEventListener('click', () => {
-        const token = localStorage.getItem('token')
-        if (!token) { alert('Faça login'); return }
-        currentPetOwner = { owner: pet.user_id, petId: pet.id }
-        msgTo.innerText = `Para usuário ${pet.user_id} (pet ${pet.id})`
-        msgModal.style.display = 'flex'
-        modal.style.display = 'none'
-      })
-    }
     
     console.log('=== openPetDetail COMPLETE ===')
   }
@@ -592,18 +1236,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const comments = Array.isArray(data) ? data : (data.comments || [])
     console.log('loadPetComments: comments count', comments.length)
     
+    // Atualizar contador de comentários
+    const countBadge = document.getElementById('comments-count')
+    if (countBadge) {
+      countBadge.textContent = comments.length === 0 ? '' : `${comments.length}`
+    }
+    
     if (comments.length === 0) {
-      list.innerHTML = '<p class="muted">Nenhum comentário ainda.</p>'
+      list.innerHTML = '<p class="muted" style="text-align:center; padding:20px">Nenhum comentário ainda. Seja o primeiro a comentar! 💭</p>'
       return
     }
     
     comments.forEach(c => {
       const el = document.createElement('div')
-      el.className = 'comment'
-      el.innerHTML = `<div class='muted small'>Usuário ${c.user_id} • ${new Date(c.inserted_at).toLocaleString()}</div><div>${c.body}</div>`
+      el.className = 'comment-bubble'
+      el.setAttribute('data-comment-id', c.id)
+      
+      // Verificar se o comentário pertence ao usuário atual
+      const isOwner = currentUser && c.user_id === currentUser.id
+      
+      // Mostrar indicador de editado se o comentário foi modificado
+      const editedLabel = c.edited ? '<span class="comment-edited">(editado)</span>' : ''
+      
+      el.innerHTML = `
+        <div>
+          <div class="comment-header">
+            <span class="comment-author">${c.user_name || 'Usuário ' + c.user_id}</span>
+            <span class="comment-time">${new Date(c.inserted_at).toLocaleString('pt-BR', { 
+              day: '2-digit', 
+              month: '2-digit',
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })} ${editedLabel}</span>
+            ${isOwner ? `
+              <div class="comment-actions">
+                <button class="btn-comment-action" onclick="editComment(${c.id}, '${c.body.replace(/'/g, "\\'")}')">✏️</button>
+                <button class="btn-comment-action" onclick="deleteComment(${c.id})">🗑️</button>
+              </div>
+            ` : ''}
+          </div>
+          <div class="comment-body" id="comment-body-${c.id}">${c.body}</div>
+        </div>
+      `
       list.appendChild(el)
     })
     console.log('loadPetComments: comments rendered')
+    
+    // Auto scroll para o final
+    setTimeout(() => {
+      list.scrollTop = list.scrollHeight
+    }, 100)
   }
 
   const btnAddComment = document.getElementById('btn-add-pet-comment')
@@ -708,9 +1390,129 @@ document.addEventListener('DOMContentLoaded', () => {
     else alert(data.error || 'erro')
   })
 
-  // auto-login if token present
-  if (localStorage.getItem('token')) {
-    afterLogin().catch(err => console.error('auto-login failed', err))
+  // Edit pet functionality
+  let currentEditingPet = null
+
+  function openEditPetModal(pet) {
+    currentEditingPet = pet
+    const modal = document.getElementById('create-pet-modal')
+    const title = modal.querySelector('h3')
+    const submitBtn = document.getElementById('btn-submit-report')
+    
+    // Change modal title
+    if (title) title.textContent = 'Editar postagem'
+    if (submitBtn) submitBtn.textContent = 'Atualizar'
+    
+    // Pre-fill form with pet data
+    formReport.querySelector('[name="name"]').value = pet.name || ''
+    formReport.querySelector('[name="species"]').value = pet.species || ''
+    formReport.querySelector('[name="breed"]').value = pet.breed || ''
+    formReport.querySelector('[name="color"]').value = pet.color || ''
+    formReport.querySelector('[name="status"]').value = pet.status || ''
+    formReport.querySelector('[name="description"]').value = pet.description || ''
+    formReport.querySelector('[name="address"]').value = pet.address || ''
+    formReport.querySelector('[name="reference"]').value = pet.reference || ''
+    formReport.querySelector('[name="city"]').value = pet.city || ''
+    formReport.querySelector('[name="state"]').value = pet.state || ''
+    formReport.querySelector('[name="country"]').value = pet.country || 'Brasil'
+    formReport.querySelector('[name="last_seen_lat"]').value = pet.last_seen_lat || ''
+    formReport.querySelector('[name="last_seen_lng"]').value = pet.last_seen_lng || ''
+    
+    // Clear file name display
+    const fileNameSpan = document.getElementById('file-name')
+    if (fileNameSpan) fileNameSpan.textContent = ''
+    
+    // Update location hint
+    const hint = document.getElementById('location-hint')
+    if (hint && pet.last_seen_lat && pet.last_seen_lng) {
+      hint.textContent = `${pet.last_seen_lat}, ${pet.last_seen_lng}`
+    }
+    
+    // Add marker on map if coordinates exist
+    if (pet.last_seen_lat && pet.last_seen_lng && map) {
+      if (reportMarker) {
+        map.removeLayer(reportMarker)
+      }
+      reportMarker = L.marker([pet.last_seen_lat, pet.last_seen_lng]).addTo(map)
+      map.setView([pet.last_seen_lat, pet.last_seen_lng], 15)
+    }
+    
+    modal.style.display = 'flex'
+  }
+
+  // Filters functionality
+  const btnApplyFilters = document.getElementById('btn-apply-filters')
+  const btnClearFilters = document.getElementById('btn-clear-filters')
+  const filterSpecies = document.getElementById('filter-species')
+  const filterCity = document.getElementById('filter-city')
+  const filterStatusCheckboxes = document.querySelectorAll('.filter-status')
+
+  if (btnApplyFilters) {
+    btnApplyFilters.addEventListener('click', () => {
+      const filters = getFilters()
+      console.log('Applying filters:', filters)
+      loadPets(filters)
+    })
+  }
+
+  if (btnClearFilters) {
+    btnClearFilters.addEventListener('click', () => {
+      // Clear all filters
+      if (filterSpecies) filterSpecies.value = ''
+      if (filterCity) filterCity.value = ''
+      
+      const filterState = document.getElementById('filter-state')
+      if (filterState) filterState.value = ''
+      
+      filterStatusCheckboxes.forEach(cb => cb.checked = true)
+      
+      // Reload pets with only the city (without state filter)
+      const filters = {}
+      
+      if (userCity) {
+        // Extract only city name (without state)
+        const cityOnly = userCity.split(',')[0].trim()
+        filters.city = cityOnly
+        
+        // Set city in the filter input
+        if (filterCity) filterCity.value = cityOnly
+      }
+      
+      // Note: State filter is left empty (showing "Todos")
+      
+      loadPets(filters)
+    })
+  }
+
+  // Apply filters on Enter key in city input
+  if (filterCity) {
+    filterCity.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const filters = getFilters()
+        loadPets(filters)
+      }
+    })
+  }
+
+  // auto-login if token present, restore guest mode, or show auth screen
+  const token = localStorage.getItem('token')
+  const viewMode = localStorage.getItem('viewMode')
+  
+  if (token) {
+    // User has token, attempt auto-login
+    afterLogin().catch(err => {
+      console.error('auto-login failed', err)
+      // If auto-login fails, clear token and show auth screen
+      localStorage.removeItem('token')
+      localStorage.removeItem('viewMode')
+    })
+  } else if (viewMode === 'guest') {
+    // User was viewing as guest, restore that state
+    console.log('Restoring guest view mode')
+    enterWithoutLogin()
+  } else {
+    // Show auth screen by default
+    console.log('No token found, showing auth screen')
   }
 
   // geocode helper and handler (bound outside initMap so it works when user clicks)
@@ -718,3 +1520,151 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('App initialization complete')
 
 })
+
+// Global functions for comment actions
+window.editComment = function(commentId, currentBody) {
+  const commentBody = document.getElementById(`comment-body-${commentId}`)
+  if (!commentBody) return
+  
+  // Verificar se já está em modo de edição
+  if (commentBody.querySelector('textarea')) return
+  
+  const originalText = commentBody.textContent
+  
+  // Criar textarea e botões de ação
+  commentBody.innerHTML = `
+    <textarea id="edit-textarea-${commentId}" style="width:100%; min-height:60px; resize:vertical; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; font-family:inherit">${originalText}</textarea>
+    <div style="display:flex; gap:8px; margin-top:8px">
+      <button onclick="saveEditComment(${commentId})" class="btn primary" style="padding:6px 16px; font-size:13px">Salvar</button>
+      <button onclick="cancelEditComment(${commentId}, '${originalText.replace(/'/g, "\\'")}' )" class="btn" style="padding:6px 16px; font-size:13px">Cancelar</button>
+    </div>
+  `
+  
+  // Focar no textarea
+  const textarea = document.getElementById(`edit-textarea-${commentId}`)
+  if (textarea) {
+    textarea.focus()
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+  }
+}
+
+window.cancelEditComment = function(commentId, originalText) {
+  const commentBody = document.getElementById(`comment-body-${commentId}`)
+  if (commentBody) {
+    commentBody.textContent = originalText
+  }
+}
+
+window.saveEditComment = async function(commentId) {
+  const textarea = document.getElementById(`edit-textarea-${commentId}`)
+  if (!textarea) return
+  
+  const newBody = textarea.value.trim()
+  if (!newBody) return alert('O comentário não pode estar vazio')
+  
+  const token = localStorage.getItem('token')
+  if (!token) return alert('Você precisa estar logado')
+  
+  // Desabilitar textarea e botão durante o salvamento
+  textarea.disabled = true
+  const saveBtn = textarea.nextElementSibling?.querySelector('button')
+  if (saveBtn) saveBtn.disabled = true
+  
+  const res = await fetch(`/api/comments/${commentId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ comment: { body: newBody } })
+  })
+  
+  if (res.ok) {
+    const updatedComment = await res.json()
+    // Atualizar o comentário na tela
+    const commentBody = document.getElementById(`comment-body-${commentId}`)
+    if (commentBody) {
+      commentBody.textContent = updatedComment.body
+      
+      // Adicionar indicador de editado
+      const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`)
+      if (commentEl) {
+        const timeSpan = commentEl.querySelector('.comment-time')
+        if (timeSpan && !timeSpan.innerHTML.includes('(editado)')) {
+          timeSpan.innerHTML += ' <span class="comment-edited">(editado)</span>'
+        }
+      }
+    }
+  } else {
+    const error = await res.json()
+    alert(error.error || 'Erro ao editar comentário')
+    
+    // Reabilitar em caso de erro
+    textarea.disabled = false
+    if (saveBtn) saveBtn.disabled = false
+  }
+}
+
+window.deleteComment = async function(commentId) {
+  if (!confirm('Tem certeza que deseja excluir este comentário?')) return
+  
+  const token = localStorage.getItem('token')
+  if (!token) return alert('Você precisa estar logado')
+  
+  const res = await fetch(`/api/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+  
+  if (res.ok) {
+    // Remover o comentário da tela
+    const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`)
+    if (commentEl) {
+      commentEl.remove()
+      
+      // Atualizar contador
+      const list = document.getElementById('pet-detail-comments')
+      const remaining = list.querySelectorAll('.comment-bubble').length
+      const countBadge = document.getElementById('comments-count')
+      if (countBadge) {
+        countBadge.textContent = remaining === 0 ? '' : `${remaining}`
+      }
+      
+      // Mostrar mensagem se não houver mais comentários
+      if (remaining === 0) {
+        list.innerHTML = '<p class="muted" style="text-align:center; padding:20px">Nenhum comentário ainda. Seja o primeiro a comentar! 💭</p>'
+      }
+    }
+  } else {
+    const error = await res.json()
+    alert(error.error || 'Erro ao excluir comentário')
+  }
+}
+
+// Global function to go back to login
+window.goToLogin = function() {
+  // Close any open modals
+  const petDetailModal = document.getElementById('pet-detail-modal')
+  if (petDetailModal) petDetailModal.style.display = 'none'
+  
+  const createPetModal = document.getElementById('create-pet-modal')
+  if (createPetModal) createPetModal.style.display = 'none'
+  
+  // Hide feed and map
+  const feedSection = document.getElementById('feed')
+  const mapSection = document.getElementById('map-section')
+  const fabButton = document.getElementById('fab-add-pet')
+  
+  if (feedSection) feedSection.style.display = 'none'
+  if (mapSection) mapSection.style.display = 'none'
+  if (fabButton) fabButton.style.display = 'none'
+  
+  // Show auth section
+  const authSection = document.getElementById('auth')
+  if (authSection) authSection.style.display = 'flex'
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}

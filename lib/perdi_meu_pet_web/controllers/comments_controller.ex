@@ -21,6 +21,50 @@ defmodule PerdiMeuPetWeb.CommentsController do
     end
   end
 
+  def update(conn, %{"id" => id, "comment" => comment_params}) do
+    comment = Comments.get_comment(parse_id(id))
+    current_user = conn.assigns[:current_user]
+
+    cond do
+      is_nil(comment) ->
+        conn |> put_status(404) |> json(%{error: "Comentário não encontrado"})
+
+      comment.user_id != current_user.id ->
+        conn |> put_status(403) |> json(%{error: "Você não pode editar este comentário"})
+
+      true ->
+        case Comments.update_comment(comment, comment_params) do
+          {:ok, updated_comment} -> json(conn, updated_comment)
+          {:error, changeset} ->
+            conn
+            |> put_status(400)
+            |> json(%{errors: translate_errors(changeset)})
+        end
+    end
+  end
+
+  def delete(conn, %{"id" => id}) do
+    comment = Comments.get_comment(parse_id(id))
+    current_user = conn.assigns[:current_user]
+
+    cond do
+      is_nil(comment) ->
+        conn |> put_status(404) |> json(%{error: "Comentário não encontrado"})
+
+      comment.user_id != current_user.id ->
+        conn |> put_status(403) |> json(%{error: "Você não pode excluir este comentário"})
+
+      true ->
+        case Comments.delete_comment(comment) do
+          {:ok, _} -> json(conn, %{success: true})
+          {:error, _} ->
+            conn
+            |> put_status(500)
+            |> json(%{error: "Erro ao excluir comentário"})
+        end
+    end
+  end
+
   defp parse_id(id) when is_binary(id) do
     case Integer.parse(id) do
       {i, _} -> i
