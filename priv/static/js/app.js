@@ -38,6 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const show = isRegister
     const elems = ['name','phone','city']
     elems.forEach(id => { const el = document.getElementById(id); if (!el) return; el.style.display = show ? 'block' : 'none' })
+    
+    // Show/hide password confirmation field
+    const passwordConfirm = document.getElementById('password-confirm')
+    if (passwordConfirm) {
+      passwordConfirm.style.display = show ? 'block' : 'none'
+    }
   }
 
   // initialize fields visibility
@@ -55,12 +61,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = document.getElementById('name').value
     const email = document.getElementById('email').value
     const password = document.getElementById('password').value
+    const passwordConfirm = document.getElementById('password-confirm').value
     const phone = document.getElementById('phone') ? document.getElementById('phone').value : null
     const city = document.getElementById('city') ? document.getElementById('city').value : null
 
     if (!email || !password) return alert('Preencha email e senha')
 
     if (isRegister) {
+      // Validate password confirmation
+      if (password !== passwordConfirm) {
+        return alert('As senhas não coincidem. Por favor, verifique.')
+      }
+      
+      if (password.length < 6) {
+        return alert('A senha deve ter no mínimo 6 caracteres')
+      }
+      
       const payload = { name, email, password }
       if (phone) payload.phone = phone
       if (city) payload.city = city
@@ -189,6 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save state to persist across page reloads
     localStorage.setItem('viewMode', 'guest')
     
+    // Clear saved filters when entering without login - always use current location
+    localStorage.removeItem('lastFilterCity')
+    localStorage.removeItem('lastFilterState')
+    
     authSection.style.display = 'none'
     
     const mapSection = document.getElementById('map-section')
@@ -212,6 +232,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Render guest header with login button
     renderGuestHeaderButtons()
+    
+    // Clear filter inputs to ensure they don't show old values
+    const filterCityInput = document.getElementById('filter-city')
+    const filterStateSelect = document.getElementById('filter-state')
+    const filterSpeciesInput = document.getElementById('filter-species')
+    if (filterCityInput) filterCityInput.value = ''
+    if (filterStateSelect) filterStateSelect.value = ''
+    if (filterSpeciesInput) filterSpeciesInput.value = ''
     
     // Initialize map first
     console.log('enterWithoutLogin: calling initMap')
@@ -244,6 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Clear guest mode and save authenticated state
     localStorage.removeItem('viewMode')
+    // Clear saved filters when logging in - always use current location
+    localStorage.removeItem('lastFilterCity')
+    localStorage.removeItem('lastFilterState')
     
     authSection.style.display = 'none'
     // show new layout: map + feed + FAB
@@ -266,6 +297,14 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadMe()
     renderHeaderButtons()
     
+    // Clear filter inputs to ensure they don't show old values
+    const filterCityInput = document.getElementById('filter-city')
+    const filterStateSelect = document.getElementById('filter-state')
+    const filterSpeciesInput = document.getElementById('filter-species')
+    if (filterCityInput) filterCityInput.value = ''
+    if (filterStateSelect) filterStateSelect.value = ''
+    if (filterSpeciesInput) filterSpeciesInput.value = ''
+    
     // Inicializar mapa primeiro
     console.log('afterLogin: calling initMap')
     await initMap().catch(err => console.error('map init error:', err))
@@ -273,12 +312,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carregar pets após o mapa estar pronto
     console.log('afterLogin: loading pets, userCity:', userCity)
     
-    // Build filters: use userCity directly if available
+    // Always use current location when logging in
     const filters = {}
     if (userCity) {
       // Extract city only (without state)
       filters.city = userCity.split(',')[0].trim()
-      console.log('afterLogin: auto-applying city filter:', filters.city)
+      console.log('afterLogin: auto-applying city filter from current location:', filters.city)
     }
     
     console.log('afterLogin: loading pets with filters:', filters)
@@ -441,17 +480,62 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
       
-      // Se mapa já existe, apenas atualizar tamanho
-      if (map) {
-        console.log('initMap: map exists, invalidating size')
-        map.invalidateSize()
-        return
-      }
-      
       const mapEl = document.getElementById('map')
       if (!mapEl) {
         console.error('initMap: map element not found')
         alert('Erro: Elemento do mapa não encontrado')
+        return
+      }
+      
+      // Se mapa já existe, resetar para localização atual
+      if (map) {
+        console.log('initMap: map exists, resetting to current location')
+        
+        // Get current location and update map
+        if (navigator.geolocation) {
+          await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                const lat = position.coords.latitude
+                const lng = position.coords.longitude
+                console.log('initMap: geolocation success (map exists)', { lat, lng })
+                
+                // Move map to current location
+                map.setView([lat, lng], 13)
+                
+                // Get city from reverse geocoding
+                try {
+                  const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`)
+                  if (geoRes.ok) {
+                    const geoData = await geoRes.json()
+                    if (geoData.address) {
+                      const city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality
+                      const state = geoData.address.state
+                      
+                      if (city && state) {
+                        userCity = `${city}, ${state}`
+                      } else if (city) {
+                        userCity = city
+                      }
+                      
+                      console.log('initMap: user location updated:', userCity)
+                    }
+                  }
+                } catch(e) {
+                  console.warn('initMap: reverse geocoding failed', e)
+                }
+                
+                resolve()
+              },
+              (error) => {
+                console.error('initMap: geolocation failed', error)
+                resolve()
+              }
+            )
+          })
+        }
+        
+        map.invalidateSize()
         return
       }
       
@@ -508,18 +592,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     console.log('initMap: user location detected:', userCity)
                     
-                    // Atualizar os campos de filtro de cidade e estado
-                    const cityFilterInput = document.getElementById('filter-city')
-                    if (cityFilterInput && city) {
-                      cityFilterInput.value = city
-                    }
-                    
-                    // Map state names to abbreviations
-                    const stateAbbr = getStateAbbreviation(state)
-                    const stateFilterSelect = document.getElementById('filter-state')
-                    if (stateFilterSelect && stateAbbr) {
-                      stateFilterSelect.value = stateAbbr
-                    }
+                    // Note: Filter inputs are NOT updated here
+                    // They will be cleared in afterLogin() and only show current location
                   }
                 }
               } catch (err) {
@@ -1468,10 +1542,44 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterStatusCheckboxes = document.querySelectorAll('.filter-status')
 
   if (btnApplyFilters) {
-    btnApplyFilters.addEventListener('click', () => {
+    btnApplyFilters.addEventListener('click', async () => {
       const filters = getFilters()
       console.log('Applying filters:', filters)
+      
+      // Save filters to localStorage for persistence
+      if (filters.city) {
+        localStorage.setItem('lastFilterCity', filters.city)
+      }
+      if (filters.state) {
+        localStorage.setItem('lastFilterState', filters.state)
+      }
+      
       loadPets(filters)
+      
+      // Move map to filtered city
+      if (filters.city) {
+        try {
+          const cityQuery = filters.state 
+            ? `${filters.city}, ${filters.state}, Brasil`
+            : `${filters.city}, Brasil`
+          const q = encodeURIComponent(cityQuery)
+          const gres = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`, {
+            headers: {
+              'User-Agent': 'SaveAPet/1.0'
+            }
+          })
+          if (gres.ok) {
+            const results = await gres.json()
+            if (results && results.length > 0) {
+              const place = results[0]
+              map.setView([parseFloat(place.lat), parseFloat(place.lon)], 12)
+              console.log(`Map moved to ${filters.city}`)
+            }
+          }
+        } catch(e) {
+          console.warn('Failed to geocode city for map:', e)
+        }
+      }
     })
   }
 
@@ -1486,6 +1594,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       filterStatusCheckboxes.forEach(cb => cb.checked = true)
       
+      // Clear saved filters from localStorage
+      localStorage.removeItem('lastFilterCity')
+      localStorage.removeItem('lastFilterState')
+      
       // Reload pets with only the city (without state filter)
       const filters = {}
       
@@ -1496,6 +1608,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Set city in the filter input
         if (filterCity) filterCity.value = cityOnly
+        
+        // Save the cleared city to localStorage
+        localStorage.setItem('lastFilterCity', cityOnly)
       }
       
       // Note: State filter is left empty (showing "Todos")
