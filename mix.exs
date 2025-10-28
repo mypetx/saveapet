@@ -8,7 +8,13 @@ defmodule PerdiMeuPet.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+      releases: [
+        perdi_meu_pet: [
+          include_executables_for: [:unix],
+          applications: [runtime_tools: :permanent]
+        ]
+      ]
     ]
   end
 

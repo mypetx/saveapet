@@ -1,0 +1,9 @@
+.git
+.gitignore
+deps/
+_build/
+.elixir_ls/
+erl_crash.dump
+*.ez
+node_modules/
+.DS_Store
