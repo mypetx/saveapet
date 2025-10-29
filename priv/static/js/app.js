@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Response:', { status: res.status, data })
     
     if (data.pet) {
-      alert(isEditing ? 'Post atualizado com sucesso!' : 'Post criado com sucesso!')
+      alert(isEditing ? i18n.t('postUpdated') : i18n.t('postCreated'))
       formReport.reset()
       
       // Reset editing state
@@ -1182,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action === 'edit' && pet) {
           openEditPetModal(pet)
         } else if (action === 'delete' && pet) {
-          if (!confirm('Tem certeza que deseja excluir este post?')) return
+          if (!confirm(i18n.t('confirmDeletePost'))) return
           
           const token = localStorage.getItem('token')
           if (!token) { alert('Faça login'); return }
@@ -1194,7 +1194,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             
             if (res.ok) {
-              alert('Post excluído com sucesso!')
+              alert(i18n.t('postDeleted'))
               // Recarregar pets com os filtros atuais
               const filters = getFilters()
               await loadPets(filters)
@@ -1369,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (comments.length === 0) {
-      list.innerHTML = '<p class="muted" style="text-align:center; padding:20px">Nenhum comentário ainda. Seja o primeiro a comentar! 💭</p>'
+      list.innerHTML = `<p class="muted" style="text-align:center; padding:20px">${i18n.t('noCommentsBeFirst')} 💭</p>`
       return
     }
     
@@ -1773,7 +1773,7 @@ window.saveEditComment = async function(commentId) {
 }
 
 window.deleteComment = async function(commentId) {
-  if (!confirm('Tem certeza que deseja excluir este comentário?')) return
+  if (!confirm(i18n.t('confirmDeleteComment'))) return
   
   const token = localStorage.getItem('token')
   if (!token) return alert('Você precisa estar logado')
