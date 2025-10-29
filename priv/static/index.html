@@ -17,6 +17,26 @@
             <h1>SaveAPet</h1>
           </div>
           <div class="header-actions">
+            <div class="language-selector" id="language-selector">
+              <button class="language-selector-btn" id="lang-btn" type="button">
+                <span class="flag" id="current-flag">🇧🇷</span>
+                <span class="arrow">▼</span>
+              </button>
+              <div class="language-dropdown">
+                <div class="language-option active" data-lang="pt">
+                  <span class="flag">🇧🇷</span>
+                  <span>Português</span>
+                </div>
+                <div class="language-option" data-lang="en">
+                  <span class="flag">🇺🇸</span>
+                  <span>English</span>
+                </div>
+                <div class="language-option" data-lang="es">
+                  <span class="flag">🇪🇸</span>
+                  <span>Español</span>
+                </div>
+              </div>
+            </div>
             <!-- profile and messages buttons will be injected here -->
           </div>
         </div>
@@ -32,22 +52,22 @@
               <img src="/imgs/logo.png?v=2" alt="Logo" style="height:60px; width:60px; object-fit:contain" />
               <h2>SaveAPet</h2>
             </div>
-            <h3 id="auth-title">Entrar</h3>
+            <h3 id="auth-title" data-i18n="login">Entrar</h3>
             <form id="form-auth">
-              <input id="name" name="name" placeholder="Seu nome (apenas no cadastro)" />
-              <input id="email" name="email" placeholder="Email" />
-              <input id="password" name="password" type="password" placeholder="Senha" />
-              <input id="password-confirm" name="password-confirm" type="password" placeholder="Confirme sua senha" style="display:none" />
+              <input id="name" name="name" data-i18n-placeholder="name" placeholder="Seu nome (apenas no cadastro)" />
+              <input id="email" name="email" data-i18n-placeholder="email" placeholder="Email" />
+              <input id="password" name="password" type="password" data-i18n-placeholder="password" placeholder="Senha" />
+              <input id="password-confirm" name="password-confirm" type="password" data-i18n-placeholder="passwordConfirm" placeholder="Confirme sua senha" style="display:none" />
               <!-- additional registration fields -->
-              <input id="phone" name="phone" placeholder="Telefone (opcional)" />
-              <input id="city" name="city" placeholder="Cidade (opcional)" />
+              <input id="phone" name="phone" data-i18n-placeholder="phone" placeholder="Telefone (opcional)" />
+              <input id="city" name="city" data-i18n-placeholder="city" placeholder="Cidade (opcional)" />
                 <div class="row">
-                  <button id="btn-submit-auth" type="button" class="btn primary">Entrar</button>
-                  <button id="btn-toggle-register" type="button" class="btn link">Ainda não tem conta?</button>
+                  <button id="btn-submit-auth" type="button" class="btn primary" data-i18n="login">Entrar</button>
+                  <button id="btn-toggle-register" type="button" class="btn link" data-i18n="noAccount">Ainda não tem conta?</button>
                 </div>
                 <div style="text-align:center; margin-top:16px; padding-top:16px; border-top:1px solid #e6e6ee">
-                  <button id="btn-continue-without-login" type="button" class="btn" style="background:#6b7280; color:white">Seguir sem login</button>
-                  <p style="font-size:12px; color:#9ca3af; margin-top:8px">Você poderá visualizar pets, mas não poderá criar posts ou comentar.</p>
+                  <button id="btn-continue-without-login" type="button" class="btn" style="background:#6b7280; color:white" data-i18n="continueWithoutLogin">Seguir sem login</button>
+                  <p style="font-size:12px; color:#9ca3af; margin-top:8px" data-i18n="continueWithoutLoginMsg">Você poderá visualizar pets, mas não poderá criar posts ou comentar.</p>
                 </div>
             </form>
           </div>
@@ -58,34 +78,34 @@
           <!-- Sidebar with filters -->
           <aside id="filters-sidebar" class="filters-sidebar">
             <div class="filters-header">
-              <h3>Filtros</h3>
-              <button id="btn-clear-filters" class="btn-link">Limpar</button>
+              <h3 data-i18n="filters">Filtros</h3>
+              <button id="btn-clear-filters" class="btn-link" data-i18n="clear">Limpar</button>
             </div>
             
             <div id="filter-info" style="display:none; padding:10px; background:#e0f2fe; border-radius:6px; margin-bottom:12px; font-size:12px; color:#0369a1;">
-              📍 Mostrando pets da sua região
+              <span data-i18n="showingPetsFromRegion">📍 Mostrando pets da sua região</span>
             </div>
             
             <div class="filter-group">
-              <label class="filter-label">Tipo de Pet</label>
+              <label class="filter-label" data-i18n="petType">Tipo de Pet</label>
               <select id="filter-species" class="filter-select">
-                <option value="">Todos</option>
-                <option value="Cachorro">Cachorro</option>
-                <option value="Gato">Gato</option>
+                <option value="" data-i18n="all">Todos</option>
+                <option value="Cachorro" data-i18n="dog">Cachorro</option>
+                <option value="Gato" data-i18n="cat">Gato</option>
                 <option value="Pássaro">Pássaro</option>
-                <option value="Outro">Outro</option>
+                <option value="Outro" data-i18n="other">Outro</option>
               </select>
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Cidade</label>
-              <input id="filter-city" type="text" class="filter-input" placeholder="Digite a cidade..." />
+              <label class="filter-label" data-i18n="city">Cidade</label>
+              <input id="filter-city" type="text" class="filter-input" data-i18n-placeholder="city" placeholder="Digite a cidade..." />
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Estado</label>
+              <label class="filter-label" data-i18n="state">Estado</label>
               <select id="filter-state" class="filter-select">
-                <option value="">Todos os Estados</option>
+                <option value="" data-i18n="allStates">Todos os Estados</option>
                 <option value="AC">Acre</option>
                 <option value="AL">Alagoas</option>
                 <option value="AP">Amapá</option>
@@ -117,24 +137,24 @@
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Status</label>
+              <label class="filter-label" data-i18n="status">Status</label>
               <div class="filter-checkboxes">
                 <label class="checkbox-label">
                   <input type="checkbox" value="Perdido" class="filter-status" checked />
-                  <span>Perdido</span>
+                  <span data-i18n="lost">Perdido</span>
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" value="Encontrado" class="filter-status" checked />
-                  <span>Encontrado</span>
+                  <span data-i18n="found">Encontrado</span>
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" value="Adoção" class="filter-status" checked />
-                  <span>Adoção</span>
+                  <span data-i18n="adoption">Adoção</span>
                 </label>
               </div>
             </div>
 
-            <button id="btn-apply-filters" class="btn primary" style="width:100%; margin-top:12px">Aplicar Filtros</button>
+            <button id="btn-apply-filters" class="btn primary" style="width:100%; margin-top:12px" data-i18n="applyFilters">Aplicar Filtros</button>
           </aside>
 
           <!-- Main content: map + pets grid -->
@@ -157,30 +177,33 @@
       <div id="create-pet-modal" class="modal" style="display:none">
         <div class="modal-content card">
           <button id="btn-close-create-modal" class="close-btn">✕</button>
-          <h3>Criar postagem</h3>
+          <h3 data-i18n="createPost">Criar postagem</h3>
           <div style="background:#f0f9ff; padding:12px; border-radius:8px; margin-bottom:12px; font-size:14px; color:#0369a1">
-            <strong>📍 Localização:</strong> <span id="location-hint">Clique no mapa ao lado para marcar</span>
+            <strong>📍 <span data-i18n="location">Localização</span>:</strong> <span id="location-hint" data-i18n="clickMapToMark">Clique no mapa ao lado para marcar</span>
           </div>
           <form id="form-report">
-            <input name="name" placeholder="Nome do pet" required />
-            <div class="row"><input name="species" placeholder="Espécie" /><input name="breed" placeholder="Raça" /></div>
-            <input name="color" placeholder="Cor" />
+            <input name="name" data-i18n-placeholder="petName" placeholder="Nome do pet" required />
+            <div class="row">
+              <input name="species" data-i18n-placeholder="species" placeholder="Espécie" />
+              <input name="breed" data-i18n-placeholder="breed" placeholder="Raça" />
+            </div>
+            <input name="color" data-i18n-placeholder="color" placeholder="Cor" />
             <select name="status">
-              <option value="Perdido">Perdido</option>
-              <option value="Encontrado">Encontrado</option>
-              <option value="Adoção">Adoção</option>
+              <option value="Perdido" data-i18n="lost">Perdido</option>
+              <option value="Encontrado" data-i18n="found">Encontrado</option>
+              <option value="Adoção" data-i18n="adoption">Adoção</option>
             </select>
             <input name="last_seen_lat" type="hidden" />
             <input name="last_seen_lng" type="hidden" />
             <div class="row">
-              <input name="address" placeholder="Endereço (ou clique no mapa)" />
+              <input name="address" data-i18n-placeholder="addressOrClickMap" placeholder="Endereço (ou clique no mapa)" />
               <button id="btn-geocode" type="button" class="btn">🔍</button>
             </div>
-            <input name="reference" placeholder="Referência — opcional" />
+            <input name="reference" data-i18n-placeholder="referenceOptional" placeholder="Referência — opcional" />
             <div class="row">
-              <input name="city" placeholder="Cidade" required />
+              <input name="city" data-i18n-placeholder="city" placeholder="Cidade" required />
               <select name="state" required>
-                <option value="">Selecione o Estado</option>
+                <option value="" data-i18n="selectState">Selecione o Estado</option>
                 <option value="AC">Acre (AC)</option>
                 <option value="AL">Alagoas (AL)</option>
                 <option value="AP">Amapá (AP)</option>
@@ -210,17 +233,17 @@
                 <option value="TO">Tocantins (TO)</option>
               </select>
             </div>
-            <input name="country" placeholder="País" value="Brasil" />
-            <input type="date" name="date_lost" placeholder="Data perdido" />
-            <textarea name="description" placeholder="Descrição"></textarea>
+            <input name="country" data-i18n-placeholder="country" placeholder="País" value="Brasil" />
+            <input type="date" name="date_lost" data-i18n-placeholder="dateLost" placeholder="Data perdido" />
+            <textarea name="description" data-i18n-placeholder="description" placeholder="Descrição"></textarea>
             <div class="file-input-wrapper">
               <input type="file" name="photo" accept="image/*" id="photo-input" />
               <label for="photo-input" class="file-input-label">
-                📷 Escolher foto
+                <span data-i18n="choosePhoto">📷 Escolher foto</span>
               </label>
               <span id="file-name" class="file-name"></span>
             </div>
-            <button id="btn-submit-report" class="btn primary" type="button">Publicar</button>
+            <button id="btn-submit-report" class="btn primary" type="button" data-i18n="publish">Publicar</button>
           </form>
         </div>
       </div>
@@ -233,12 +256,12 @@
             <div id="pet-detail-content"></div>
             <hr style="margin:20px 0; border:none; border-top:1px solid #e6e6ee"/>
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px">
-              <h4 style="margin:0; color:#374151">💬 Comentários</h4>
+              <h4 style="margin:0; color:#374151" data-i18n="comments">💬 Comentários</h4>
               <span id="comments-count" style="font-size:12px; color:#6b7280; background:#f3f4f6; padding:2px 8px; border-radius:12px"></span>
             </div>
             <div id="pet-detail-comments"></div>
-            <textarea id="pet-detail-comment-input" placeholder="Escreva um comentário..." style="resize:vertical; min-height:60px"></textarea>
-            <div class="row"><button id="btn-add-pet-comment" class="btn primary">Comentar</button></div>
+            <textarea id="pet-detail-comment-input" data-i18n-placeholder="writeComment" placeholder="Escreva um comentário..." style="resize:vertical; min-height:60px"></textarea>
+            <div class="row"><button id="btn-add-pet-comment" class="btn primary" data-i18n="comment">Comentar</button></div>
           </div>
         </div>
       </div>
@@ -266,20 +289,24 @@
       <!-- profile modal -->
       <div id="profile-modal" class="modal" style="display:none">
         <div class="modal-content card">
-          <h3>Meu perfil</h3>
+          <h3 data-i18n="myProfile">Meu perfil</h3>
           <form id="profile-form">
-            <input id="profile-name" name="name" placeholder="Nome" />
-            <input id="profile-email" name="email" placeholder="Email" />
-            <input id="profile-phone" name="phone" placeholder="Telefone" />
-            <input id="profile-city" name="city" placeholder="Cidade" />
-            <input id="profile-password" name="password" type="password" placeholder="Nova senha (deixe vazio para manter)" />
-            <div class="row"><button id="btn-save-profile" class="btn primary" type="button">Salvar</button><button id="btn-close-profile" class="btn" type="button">Fechar</button></div>
+            <input id="profile-name" name="name" data-i18n-placeholder="name" placeholder="Nome" />
+            <input id="profile-email" name="email" data-i18n-placeholder="email" placeholder="Email" />
+            <input id="profile-phone" name="phone" data-i18n-placeholder="phone" placeholder="Telefone" />
+            <input id="profile-city" name="city" data-i18n-placeholder="city" placeholder="Cidade" />
+            <input id="profile-password" name="password" type="password" data-i18n-placeholder="newPassword" placeholder="Nova senha (deixe vazio para manter)" />
+            <div class="row">
+              <button id="btn-save-profile" class="btn primary" type="button" data-i18n="saveProfile">Salvar</button>
+              <button id="btn-close-profile" class="btn" type="button" data-i18n="close">Fechar</button>
+            </div>
           </form>
         </div>
       </div>
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="/js/i18n.js?v=6"></script>
+    <script src="/js/app.js?v=6"></script>
   </body>
 </html>

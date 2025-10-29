@@ -141,3 +141,18 @@ input, textarea, select{ width:100%; padding:10px; border-radius:8px; border:1px
 
 /* Alternatively, move attribution to top-left on mobile */
 .leaflet-bottom.leaflet-right{ z-index:10 }
+
+/* Language selector - discrete dropdown */
+.language-selector{ position:relative; display:inline-block }
+.language-selector-btn{ background:rgba(255,255,255,0.15); border:none; color:white; padding:6px 12px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:14px; transition:all 0.2s; backdrop-filter:blur(10px) }
+.language-selector-btn:hover{ background:rgba(255,255,255,0.25); transform:translateY(-1px) }
+.language-selector-btn .flag{ font-size:18px }
+.language-selector-btn .arrow{ font-size:10px; transition:transform 0.2s }
+.language-selector.open .arrow{ transform:rotate(180deg) }
+.language-dropdown{ position:absolute; right:0; top:42px; background:white; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:140px; overflow:hidden; opacity:0; visibility:hidden; transform:translateY(-10px); transition:all 0.2s; z-index:1001 }
+.language-selector.open .language-dropdown{ opacity:1; visibility:visible; transform:translateY(0) }
+.language-option{ padding:10px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; color:#1f2937; transition:background 0.15s; font-size:14px }
+.language-option:hover{ background:#f3f4f6 }
+.language-option.active{ background:#fef2f2; color:var(--accent); font-weight:600 }
+.language-option .flag{ font-size:18px }
+

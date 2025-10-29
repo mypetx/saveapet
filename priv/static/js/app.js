@@ -2,6 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('=== APP.JS LOADED ===')
   console.log('DOMContentLoaded event fired')
   
+  // Initialize i18n
+  if (typeof i18n !== 'undefined') {
+    i18n.updatePage()
+  }
+  
   const apiBase = '/api'
   const formAuth = document.getElementById('form-auth')
   const btnSubmitAuth = document.getElementById('btn-submit-auth')
@@ -51,9 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnToggleRegister.addEventListener('click', () => {
     isRegister = !isRegister
-    document.getElementById('auth-title').innerText = isRegister ? 'Criar conta' : 'Entrar'
-    btnSubmitAuth.innerText = isRegister ? 'Criar conta' : 'Entrar'
-    btnToggleRegister.innerText = isRegister ? 'Já tenho conta' : 'Ainda não tem conta?'
+    document.getElementById('auth-title').innerText = isRegister ? i18n.t('register') : i18n.t('login')
+    btnSubmitAuth.innerText = isRegister ? i18n.t('register') : i18n.t('login')
+    btnToggleRegister.innerText = isRegister ? i18n.t('hasAccount') : i18n.t('noAccount')
     updateAuthFields()
   })
 
@@ -65,16 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const phone = document.getElementById('phone') ? document.getElementById('phone').value : null
     const city = document.getElementById('city') ? document.getElementById('city').value : null
 
-    if (!email || !password) return alert('Preencha email e senha')
+    if (!email || !password) return alert(i18n.t('fillAllFields'))
 
     if (isRegister) {
       // Validate password confirmation
       if (password !== passwordConfirm) {
-        return alert('As senhas não coincidem. Por favor, verifique.')
+        return alert(i18n.t('passwordMismatch'))
       }
       
       if (password.length < 6) {
-        return alert('A senha deve ter no mínimo 6 caracteres')
+        return alert(i18n.t('passwordTooShort') || 'Password must be at least 6 characters')
       }
       
       const payload = { name, email, password }
@@ -337,7 +342,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderHeaderButtons(){
     const actions = ensureHeaderActions()
+    
+    // Preserve language selector
+    const langSelector = actions.querySelector('.language-selector')
     actions.innerHTML = ''
+    if (langSelector) {
+      actions.appendChild(langSelector)
+    }
+    
     // only render buttons when we have a logged user
     if (!currentUser) return
 
@@ -357,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     profWrap.className = 'profile-menu'
     const profLabel = document.createElement('button')
     profLabel.className = 'btn profile-btn'
-    profLabel.innerText = 'Meu Perfil'
+    profLabel.innerText = i18n.t('myProfile')
     profLabel.addEventListener('click', (e) => {
       e.stopPropagation()
       const dd = profWrap.querySelector('.profile-dropdown')
@@ -366,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropdown = document.createElement('div')
     dropdown.className = 'profile-dropdown'
     dropdown.style.display = 'none'
-    dropdown.innerHTML = `<div class='profile-item' id='hdr-edit-profile'>Editar perfil</div><div class='profile-item' id='hdr-logout'>Sair</div>`
+    dropdown.innerHTML = `<div class='profile-item' id='hdr-edit-profile'>${i18n.t('editProfile')}</div><div class='profile-item' id='hdr-logout'>${i18n.t('logout')}</div>`
     profWrap.appendChild(profLabel)
     profWrap.appendChild(dropdown)
     actions.appendChild(profWrap)
@@ -380,12 +392,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderGuestHeaderButtons(){
     const actions = ensureHeaderActions()
+    
+    // Preserve language selector
+    const langSelector = actions.querySelector('.language-selector')
     actions.innerHTML = ''
+    if (langSelector) {
+      actions.appendChild(langSelector)
+    }
     
     // Login button for guest users
     const loginBtn = document.createElement('button')
     loginBtn.className = 'btn primary'
-    loginBtn.innerText = 'Fazer Login'
+    loginBtn.innerText = i18n.t('login')
     loginBtn.style.padding = '8px 20px'
     loginBtn.addEventListener('click', () => {
       returnToLogin()
@@ -400,7 +418,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reset state
     currentUser = null
     const actions = document.querySelector('.header-actions')
-    if (actions) actions.innerHTML = ''
+    if (actions) {
+      // Preserve language selector
+      const langSelector = actions.querySelector('.language-selector')
+      actions.innerHTML = ''
+      if (langSelector) {
+        actions.appendChild(langSelector)
+      }
+    }
     
     // Hide feed and map
     document.getElementById('map-section').style.display = 'none'
@@ -465,7 +490,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('feed').style.display = 'none'
     document.getElementById('fab-add-pet').style.display = 'none'
     const actions = document.querySelector('.header-actions')
-    if (actions) actions.innerHTML = ''
+    if (actions) {
+      // Preserve language selector
+      const langSelector = actions.querySelector('.language-selector')
+      actions.innerHTML = ''
+      if (langSelector) {
+        actions.appendChild(langSelector)
+      }
+    }
   }
 
   // map
@@ -887,7 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
-  async function loadPets(filters = {}){
+  window.loadPets = async function(filters = {}){
     const token = localStorage.getItem('token')
     const res = await fetch(`${apiBase}/pets`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
     if (!res.ok) {
@@ -922,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filters.city) parts.push(filters.city)
         if (filters.state && !filters.city) parts.push(filters.state)
         if (filters.species) parts.push(filters.species)
-        filterInfo.textContent = `📍 Mostrando pets de ${parts.join(', ')}`
+        filterInfo.textContent = `📍 ${i18n.t('showingPetsFrom')} ${parts.join(', ')}`
         filterInfo.style.display = 'block'
       } else {
         filterInfo.style.display = 'none'
@@ -1014,8 +1046,8 @@ document.addEventListener('DOMContentLoaded', () => {
         menuDropdown.id = `menu-${p.id}`
         menuDropdown.style.display = 'none'
         menuDropdown.innerHTML = `
-          <div class="card-menu-item" data-action="edit" data-pet-id="${p.id}">✏️ Editar</div>
-          <div class="card-menu-item card-menu-danger" data-action="delete" data-pet-id="${p.id}">🗑️ Excluir</div>
+          <div class="card-menu-item" data-action="edit" data-pet-id="${p.id}">✏️ ${i18n.t('edit')}</div>
+          <div class="card-menu-item card-menu-danger" data-action="delete" data-pet-id="${p.id}">🗑️ ${i18n.t('delete')}</div>
         `
         
         card.appendChild(menuBtn)
@@ -1045,12 +1077,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       meta.innerHTML = `
-        <strong>${p.name || 'Sem nome'}</strong>
-        <div class='muted'>${p.species || ''} • ${p.breed || ''}</div>
-        <div class='${statusClass}'>${statusEmoji} ${p.status||'Sem status'}</div>
+        <strong>${p.name || i18n.t('noName')}</strong>
+        <div class='muted'>${p.species || ''} • ${p.breed || i18n.t('breed')}</div>
+        <div class='${statusClass}'>${statusEmoji} ${i18n.t(p.status?.toLowerCase()) || p.status || i18n.t('noStatus')}</div>
         ${locationStr ? `<div class='muted' style='margin-top:4px'>📍 ${locationStr}</div>` : ''}
         <div style='margin-top:8px; padding-top:8px; border-top:1px solid #e6e6ee'>
-          <span style='font-size:13px; color:#6b7280'>💬 Ver detalhes e comentários</span>
+          <span style='font-size:13px; color:#6b7280'>💬 ${i18n.t('viewDetailsAndComments')}</span>
         </div>
       `
       card.appendChild(img)
@@ -1103,22 +1135,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="text-align:center;">
             <b>${p.name||'Pet'}</b><br>
             ${p.species||''} ${p.breed ? '• ' + p.breed : ''}<br>
-            <span style="color:#666;">Status: ${p.status||''}</span><br>
+            <span style="color:#666;">${i18n.t('status')}: ${i18n.t(p.status?.toLowerCase()) || p.status || ''}</span><br>
             ${locationStr ? `<span style="color:#666; font-size:12px;">📍 ${locationStr}</span><br>` : ''}
-            <button onclick="window.openPetFromMap(${p.id})" style="margin-top:8px; padding:6px 12px; background:#ff6f61; color:white; border:none; border-radius:6px; cursor:pointer; font-size:13px;">Ver detalhes</button>
+            <button onclick="window.openPetFromMap(${p.id})" style="margin-top:8px; padding:6px 12px; background:#ff6f61; color:white; border:none; border-radius:6px; cursor:pointer; font-size:13px;">${i18n.t('viewDetails')}</button>
           </div>
         `
       } else {
         // Multiple pets at same location
-        popupContent += `<div style="text-align:center; margin-bottom:10px;"><b>${pets.length} pets neste local</b></div>`
+        popupContent += `<div style="text-align:center; margin-bottom:10px;"><b>${pets.length} ${i18n.t('petsAtLocation')}</b></div>`
         
         pets.forEach((p, idx) => {
           popupContent += `
             <div style="border-top:${idx > 0 ? '1px solid #eee' : 'none'}; padding:8px 0; text-align:center;">
               <b>${p.name||'Pet'}</b><br>
               <span style="font-size:13px; color:#666;">${p.species||''} ${p.breed ? '• ' + p.breed : ''}</span><br>
-              <span style="font-size:12px; color:#999;">Status: ${p.status||''}</span><br>
-              <button onclick="window.openPetFromMap(${p.id})" style="margin-top:6px; padding:4px 10px; background:#ff6f61; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">Ver detalhes</button>
+              <span style="font-size:12px; color:#999;">${i18n.t('status')}: ${i18n.t(p.status?.toLowerCase()) || p.status || ''}</span><br>
+              <button onclick="window.openPetFromMap(${p.id})" style="margin-top:6px; padding:4px 10px; background:#ff6f61; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">${i18n.t('viewDetails')}</button>
             </div>
           `
         })
@@ -1240,34 +1272,34 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Build contact info
     let contactInfo = '<div style="background:#f0f9ff; padding:12px; border-radius:8px; margin-top:12px; border-left:3px solid var(--accent)">'
-    contactInfo += '<h3 style="margin:0 0 8px 0; font-size:16px; color:#0369a1">📞 Informações de Contato</h3>'
+    contactInfo += `<h3 style="margin:0 0 8px 0; font-size:16px; color:#0369a1">📞 ${i18n.t('contactInformation')}</h3>`
     
     if (pet.owner_name) {
-      contactInfo += `<p style="margin:4px 0"><strong>Nome:</strong> ${pet.owner_name}</p>`
+      contactInfo += `<p style="margin:4px 0"><strong>${i18n.t('name')}:</strong> ${pet.owner_name}</p>`
     }
     
     if (pet.owner_email) {
-      contactInfo += `<p style="margin:4px 0"><strong>Email:</strong> <a href="mailto:${pet.owner_email}" style="color:var(--accent)">${pet.owner_email}</a></p>`
+      contactInfo += `<p style="margin:4px 0"><strong>${i18n.t('email')}:</strong> <a href="mailto:${pet.owner_email}" style="color:var(--accent)">${pet.owner_email}</a></p>`
     }
     if (pet.owner_phone) {
-      contactInfo += `<p style="margin:4px 0"><strong>Telefone:</strong> <a href="tel:${pet.owner_phone}" style="color:var(--accent)">${pet.owner_phone}</a></p>`
+      contactInfo += `<p style="margin:4px 0"><strong>${i18n.t('phone')}:</strong> <a href="tel:${pet.owner_phone}" style="color:var(--accent)">${pet.owner_phone}</a></p>`
     }
     
     if (!pet.owner_name && !pet.owner_email && !pet.owner_phone) {
-      contactInfo += '<p style="margin:4px 0; color:#6b7280">Informações de contato não disponíveis</p>'
+      contactInfo += `<p style="margin:4px 0; color:#6b7280">${i18n.t('contactInfoNotAvailable')}</p>`
     }
     
     contactInfo += '</div>'
     
     content.innerHTML = `
       <img src="${pet.photo_url||'/favicon.ico'}" style="width:100%; max-height:300px; object-fit:cover; border-radius:8px; margin-bottom:12px"/>
-      <h2>${pet.name || 'Sem nome'}</h2>
-      <p><strong>Espécie:</strong> ${pet.species||'N/A'} • <strong>Raça:</strong> ${pet.breed||'N/A'}</p>
-      <p><strong>Cor:</strong> ${pet.color||'N/A'}</p>
-      <p><strong>Status:</strong> ${pet.status||'N/A'}</p>
-      ${locationStr ? `<p><strong>Localização:</strong> ${locationStr}</p>` : ''}
-      <p><strong>Descrição:</strong> ${pet.description||'Sem descrição'}</p>
-      <p><strong>Endereço:</strong> ${pet.address||'N/A'} ${pet.reference ? '('+pet.reference+')' : ''}</p>
+      <h2>${pet.name || i18n.t('noName')}</h2>
+      <p><strong>${i18n.t('species')}:</strong> ${pet.species||'N/A'} • <strong>${i18n.t('breed')}:</strong> ${pet.breed||'N/A'}</p>
+      <p><strong>${i18n.t('color')}:</strong> ${pet.color||'N/A'}</p>
+      <p><strong>${i18n.t('status')}:</strong> ${i18n.t(pet.status?.toLowerCase()) || pet.status || 'N/A'}</p>
+      ${locationStr ? `<p><strong>${i18n.t('location')}:</strong> ${locationStr}</p>` : ''}
+      <p><strong>${i18n.t('description')}:</strong> ${pet.description || i18n.t('noDescription')}</p>
+      <p><strong>${i18n.t('address')}:</strong> ${pet.address||'N/A'} ${pet.reference ? '('+pet.reference+')' : ''}</p>
       ${contactInfo}
     `
     
@@ -1290,8 +1322,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loginMsg.id = 'login-comment-msg'
         loginMsg.style.cssText = 'background:#fef3c7; padding:16px; border-radius:8px; text-align:center; margin-top:12px'
         loginMsg.innerHTML = `
-          <p style="margin:0 0 12px 0; color:#92400e; font-weight:500">🔒 Para comentar é necessário fazer login</p>
-          <button onclick="goToLogin()" class="btn primary" style="padding:8px 24px; font-size:14px">Fazer Login</button>
+          <p style="margin:0 0 12px 0; color:#92400e; font-weight:500">🔒 ${i18n.t('toCommentLoginRequired')}</p>
+          <button onclick="goToLogin()" class="btn primary" style="padding:8px 24px; font-size:14px">${i18n.t('makeLogin')}</button>
         `
         commentSection.appendChild(loginMsg)
       }
@@ -1494,8 +1526,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitBtn = document.getElementById('btn-submit-report')
     
     // Change modal title
-    if (title) title.textContent = 'Editar postagem'
-    if (submitBtn) submitBtn.textContent = 'Atualizar'
+    if (title) title.textContent = i18n.t('editPost')
+    if (submitBtn) submitBtn.textContent = i18n.t('update')
     
     // Pre-fill form with pet data
     formReport.querySelector('[name="name"]').value = pet.name || ''
@@ -1670,8 +1702,8 @@ window.editComment = function(commentId, currentBody) {
   commentBody.innerHTML = `
     <textarea id="edit-textarea-${commentId}" style="width:100%; min-height:60px; resize:vertical; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; font-family:inherit">${originalText}</textarea>
     <div style="display:flex; gap:8px; margin-top:8px">
-      <button onclick="saveEditComment(${commentId})" class="btn primary" style="padding:6px 16px; font-size:13px">Salvar</button>
-      <button onclick="cancelEditComment(${commentId}, '${originalText.replace(/'/g, "\\'")}' )" class="btn" style="padding:6px 16px; font-size:13px">Cancelar</button>
+      <button onclick="saveEditComment(${commentId})" class="btn primary" style="padding:6px 16px; font-size:13px">${i18n.t('save')}</button>
+      <button onclick="cancelEditComment(${commentId}, '${originalText.replace(/'/g, "\\'")}' )" class="btn" style="padding:6px 16px; font-size:13px">${i18n.t('cancel')}</button>
     </div>
   `
   
@@ -1803,3 +1835,148 @@ window.goToLogin = function() {
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
+
+// Listen for language changes
+window.addEventListener('languageChanged', () => {
+  // Update auth button states
+  const authTitle = document.getElementById('auth-title')
+  const btnSubmitAuth = document.getElementById('btn-submit-auth')
+  const btnToggleRegister = document.getElementById('btn-toggle-register')
+  
+  if (authTitle && btnSubmitAuth && btnToggleRegister) {
+    const isReg = btnSubmitAuth.innerText !== i18n.t('login')
+    authTitle.innerText = isReg ? i18n.t('register') : i18n.t('login')
+    btnSubmitAuth.innerText = isReg ? i18n.t('register') : i18n.t('login')
+    btnToggleRegister.innerText = isReg ? i18n.t('hasAccount') : i18n.t('noAccount')
+  }
+  
+  // Update header buttons (this recreates the menu with new translations)
+  const token = localStorage.getItem('token')
+  const viewMode = localStorage.getItem('viewMode')
+  
+  const actions = document.querySelector('.header-actions')
+  if (!actions) return
+  
+  // Save language selector
+  const langSelector = actions.querySelector('.language-selector')
+  
+  if (token) {
+    // User is logged in - recreate profile menu
+    const profWrap = actions.querySelector('.profile-menu')
+    if (profWrap) {
+      const profLabel = profWrap.querySelector('.btn.profile-btn')
+      if (profLabel) {
+        profLabel.innerText = i18n.t('myProfile')
+      }
+      
+      const editProfileBtn = profWrap.querySelector('#hdr-edit-profile')
+      if (editProfileBtn) {
+        editProfileBtn.innerText = i18n.t('editProfile')
+      }
+      
+      const logoutBtn = profWrap.querySelector('#hdr-logout')
+      if (logoutBtn) {
+        logoutBtn.innerText = i18n.t('logout')
+      }
+    }
+  } else if (viewMode === 'guest') {
+    // Guest mode - update login button
+    const loginBtn = actions.querySelector('.btn.primary')
+    if (loginBtn) {
+      loginBtn.innerText = i18n.t('login')
+    }
+  }
+  
+  // Update filter info text if visible
+  const filterInfo = document.getElementById('filter-info')
+  if (filterInfo && filterInfo.style.display !== 'none') {
+    const currentText = filterInfo.textContent
+    // Extract the location part (after the emoji and text)
+    const patterns = [
+      /📍\s*(?:Mostrando pets de|Showing pets from|Mostrando mascotas de)\s+(.+)/,
+      /📍\s*(.+)/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = currentText.match(pattern)
+      if (match && match[1]) {
+        // Check if we have a recognized pattern
+        if (currentText.includes('Mostrando') || currentText.includes('Showing')) {
+          filterInfo.textContent = `📍 ${i18n.t('showingPetsFrom')} ${match[1]}`
+          break
+        }
+      }
+    }
+  }
+  
+  // Reload pets to update card menus, status translations, and map popups
+  const petsDiv = document.getElementById('pets')
+  if (petsDiv) {
+    window.loadPets()
+  }
+})
+
+// Language selector dropdown functionality
+const languageSelector = document.getElementById('language-selector')
+const langBtn = document.getElementById('lang-btn')
+const currentFlag = document.getElementById('current-flag')
+const languageOptions = document.querySelectorAll('.language-option')
+
+// Flag emojis
+const flags = {
+  pt: '🇧🇷',
+  en: '🇺🇸',
+  es: '🇪🇸'
+}
+
+// Toggle dropdown
+if (langBtn) {
+  langBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    languageSelector.classList.toggle('open')
+  })
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (languageSelector && !languageSelector.contains(e.target)) {
+    languageSelector.classList.remove('open')
+  }
+})
+
+// Handle language selection
+languageOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    const lang = option.getAttribute('data-lang')
+    
+    // Update active state
+    languageOptions.forEach(opt => opt.classList.remove('active'))
+    option.classList.add('active')
+    
+    // Update flag
+    if (currentFlag) {
+      currentFlag.textContent = flags[lang]
+    }
+    
+    // Change language
+    i18n.setLanguage(lang)
+    
+    // Close dropdown
+    languageSelector.classList.remove('open')
+  })
+})
+
+// Set initial flag based on current language
+if (currentFlag && i18n) {
+  currentFlag.textContent = flags[i18n.currentLang] || '🇧🇷'
+  
+  // Set initial active state
+  languageOptions.forEach(opt => {
+    if (opt.getAttribute('data-lang') === i18n.currentLang) {
+      opt.classList.add('active')
+    } else {
+      opt.classList.remove('active')
+    }
+  })
+}
+
