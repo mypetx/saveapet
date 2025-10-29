@@ -86,13 +86,16 @@ input, textarea, select{ width:100%; padding:10px; border-radius:8px; border:1px
 .fab{ position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:var(--accent); color:white; border:none; font-size:28px; box-shadow:0 8px 24px rgba(255,111,97,0.4); cursor:pointer; z-index:500; transition:all 0.3s }
 .fab:hover{ transform:scale(1.1) rotate(90deg); box-shadow:0 12px 32px rgba(255,111,97,0.6) }
 /* Modal improvements */
-.modal{ position:fixed; left:0; top:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.15); z-index:9999 }
+.modal{ position:fixed; left:0; top:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.15); z-index:9999; overflow:hidden }
 .modal-content{ width:90%; max-width:540px; z-index:10000; max-height:90vh; position:relative; overflow:hidden }
-.modal-scroll-content{ max-height:90vh; overflow-y:auto; padding:20px }
+.modal-scroll-content{ max-height:90vh; overflow-y:auto; padding:20px; -webkit-overflow-scrolling:touch }
 .modal-large{ max-width:720px }
+/* Block body scroll when modal is open */
+body.modal-open{ overflow:hidden; position:fixed; width:100%; height:100% }
 /* Modal de criação - lado a lado com mapa */
-#create-pet-modal{ background:transparent; align-items:stretch; padding:0; pointer-events:none }
-#create-pet-modal .modal-content{ width:400px; max-width:400px; height:100vh; max-height:100vh; margin-left:auto; border-radius:0; box-shadow:-4px 0 24px rgba(0,0,0,0.2); pointer-events:auto }
+#create-pet-modal{ background:transparent; align-items:stretch; padding:0; pointer-events:none; overflow:hidden }
+#create-pet-modal .modal-content{ width:400px; max-width:400px; height:100vh; max-height:100vh; margin-left:auto; border-radius:0; box-shadow:-4px 0 24px rgba(0,0,0,0.2); pointer-events:auto; display:flex; flex-direction:column; overflow:hidden }
+#create-pet-modal .modal-scroll-content{ flex:1; overflow-y:auto; overflow-x:hidden; padding:20px; -webkit-overflow-scrolling:touch }
 .close-btn{ position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.95); border:none; font-size:24px; cursor:pointer; color:var(--muted); transition:all 0.2s; z-index:10001; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.1) }
 .close-btn:hover{ color:#111; background:white; transform:scale(1.1) }
 /* Comments section - Instagram style */
@@ -118,8 +121,11 @@ input, textarea, select{ width:100%; padding:10px; border-radius:8px; border:1px
 
 @media (max-width:900px){
 	.pets-grid{ grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)) }
-	#create-pet-modal .modal-content{ width:100%; max-width:100%; height:70vh; max-height:70vh; margin-top:auto; border-radius:12px 12px 0 0 }
-	#create-pet-modal{ align-items:flex-end }
+	#create-pet-modal .modal-content{ width:100%; max-width:100%; height:90vh; max-height:90vh; margin-top:auto; border-radius:12px 12px 0 0; overflow:hidden; display:flex; flex-direction:column }
+	#create-pet-modal .modal-scroll-content{ flex:1; height:100%; overflow-y:scroll; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:20px; padding-top:60px; padding-bottom:140px }
+	#create-pet-modal{ align-items:flex-end; overflow:hidden }
+	#create-pet-modal .close-btn{ position:fixed; top:20px; right:20px; z-index:10002; background:white; box-shadow:0 2px 12px rgba(0,0,0,0.15) }
+	#create-pet-modal h3{ position:sticky; top:-60px; background:white; padding:20px; margin:-20px -20px 20px -20px; border-bottom:1px solid #eee; z-index:10 }
 	.feed-section{ flex-direction:column; padding:0 12px }
 	.feed-main{ width:100% }
 	.filters-sidebar{ width:calc(100% - 24px); position:static; max-height:none; left:auto; top:auto }

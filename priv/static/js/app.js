@@ -789,6 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Fechar modal e resetar UI
       modal.style.display = 'none'
+      document.body.classList.remove('modal-open') // Remove body scroll lock
       const hint = document.getElementById('location-hint')
       if (hint) hint.textContent = 'Clique no mapa ao lado para marcar'
       if (reportMarker) {
@@ -823,6 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (createModal) {
         createModal.style.display = 'flex'
+        document.body.classList.add('modal-open') // Lock body scroll
         console.log('Opened create modal')
       }
     })
@@ -837,6 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseCreateModal.addEventListener('click', function() {
       const modal = document.getElementById('create-pet-modal')
       modal.style.display = 'none'
+      document.body.classList.remove('modal-open') // Remove body scroll lock
       formReport.reset()
       
       // Reset editing state
@@ -1564,6 +1567,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     modal.style.display = 'flex'
+    document.body.classList.add('modal-open') // Lock body scroll
   }
 
   // Filters functionality
@@ -1817,7 +1821,10 @@ window.goToLogin = function() {
   if (petDetailModal) petDetailModal.style.display = 'none'
   
   const createPetModal = document.getElementById('create-pet-modal')
-  if (createPetModal) createPetModal.style.display = 'none'
+  if (createPetModal) {
+    createPetModal.style.display = 'none'
+    document.body.classList.remove('modal-open') // Remove body scroll lock
+  }
   
   // Hide feed and map
   const feedSection = document.getElementById('feed')
