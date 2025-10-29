@@ -31,10 +31,10 @@ defmodule PerdiMeuPet.Pets.Pet do
   end
 end
 
-# Custom JSON encoder para incluir informações de contato do dono
+# Custom JSON encoder to include owner contact information
 defimpl Jason.Encoder, for: PerdiMeuPet.Pets.Pet do
   def encode(pet, opts) do
-    # Incluir email e telefone do dono se estiver carregado
+    # Include owner email and phone if loaded
     owner_contact = if pet.user do
       %{
         owner_name: pet.user.name,

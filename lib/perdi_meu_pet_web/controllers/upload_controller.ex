@@ -2,10 +2,10 @@ defmodule PerdiMeuPetWeb.UploadController do
   use Phoenix.Controller
 
   @doc """
-  Serve imagens do diretório de uploads.
+  Serve images from the uploads directory.
   """
   def serve(conn, %{"filename" => filename}) do
-    # Previne path traversal
+    # Prevent path traversal attacks
     safe_filename = Path.basename(filename)
 
     uploads_dir = get_uploads_dir()
@@ -32,7 +32,7 @@ defmodule PerdiMeuPetWeb.UploadController do
     end
   end
 
-  # Retorna o diretório de uploads (volume persistente em produção)
+  # Returns the uploads directory (persistent volume in production)
   defp get_uploads_dir do
     if File.dir?("/data") do
       "/data/uploads"

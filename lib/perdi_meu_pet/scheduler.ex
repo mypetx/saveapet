@@ -1,13 +1,13 @@
 defmodule PerdiMeuPet.Scheduler do
   @moduledoc """
-  Scheduler para tarefas periódicas como limpeza de posts antigos.
+  Scheduler for periodic tasks like cleaning old posts.
   """
 
   use GenServer
   require Logger
   alias PerdiMeuPet.Pets.Cleaner
 
-  # Executa limpeza a cada 24 horas (em milissegundos)
+  # Run cleanup every 24 hours (in milliseconds)
   @cleanup_interval 24 * 60 * 60 * 1000
 
   def start_link(_opts) do
@@ -16,10 +16,10 @@ defmodule PerdiMeuPet.Scheduler do
 
   @impl true
   def init(state) do
-    Logger.info("Scheduler iniciado - Limpeza automática ativada (a cada 24h)")
+    Logger.info("Scheduler started - Automatic cleanup enabled (every 24h)")
 
-    # Agenda a primeira limpeza para 1 minuto após o start (para testes)
-    # Em produção, pode aumentar para algumas horas
+    # Schedule first cleanup for 1 minute after start (for testing)
+    # In production, can increase to several hours
     schedule_cleanup(60_000)
 
     {:ok, state}
@@ -27,16 +27,16 @@ defmodule PerdiMeuPet.Scheduler do
 
   @impl true
   def handle_info(:cleanup, state) do
-    Logger.info("Executando limpeza automática de posts antigos...")
+    Logger.info("Running automatic cleanup of old posts...")
 
     try do
       Cleaner.clean_old_posts()
     rescue
       e ->
-        Logger.error("Erro na limpeza automática: #{inspect(e)}")
+        Logger.error("Error in automatic cleanup: #{inspect(e)}")
     end
 
-    # Agenda próxima limpeza
+    # Schedule next cleanup
     schedule_cleanup(@cleanup_interval)
 
     {:noreply, state}
@@ -47,7 +47,7 @@ defmodule PerdiMeuPet.Scheduler do
   end
 
   @doc """
-  Força execução imediata da limpeza (útil para testes).
+  Forces immediate cleanup execution (useful for testing).
   """
   def run_cleanup_now do
     send(__MODULE__, :cleanup)

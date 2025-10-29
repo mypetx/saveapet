@@ -12,11 +12,11 @@ defmodule PerdiMeuPet.Application do
       PerdiMeuPet.Scheduler
     ]
 
-    # Garante que o diretório de uploads existe
+    # Ensure the uploads directory exists
     uploads_dir = if File.dir?("/data") do
-      "/data/uploads"  # Produção: volume persistente
+      "/data/uploads"  # Production: persistent volume
     else
-      Path.expand("priv/static/uploads", File.cwd!())  # Desenvolvimento
+      Path.expand("priv/static/uploads", File.cwd!())  # Development
     end
     File.mkdir_p!(uploads_dir)
     Logger.info("Uploads directory: #{uploads_dir}")

@@ -1,7 +1,7 @@
 defmodule PerdiMeuPet.Pets.Cleaner do
   @moduledoc """
-  Módulo responsável por limpar posts antigos automaticamente.
-  Remove posts com mais de 90 dias e suas respectivas imagens.
+  Module responsible for automatically cleaning old posts.
+  Removes posts older than 90 days and their respective images.
   """
 
   require Logger
@@ -12,15 +12,15 @@ defmodule PerdiMeuPet.Pets.Cleaner do
   @days_to_keep 90
 
   @doc """
-  Remove posts com mais de 90 dias e suas imagens.
-  Retorna o número de posts removidos.
+  Removes posts older than 90 days and their images.
+  Returns the number of posts removed.
   """
   def clean_old_posts do
     cutoff_date = DateTime.utc_now() |> DateTime.add(-@days_to_keep, :day)
 
-    Logger.info("Iniciando limpeza de posts antigos (antes de #{cutoff_date})")
+    Logger.info("Starting cleanup of old posts (before #{cutoff_date})")
 
-    # Busca posts antigos
+    # Fetch old posts
     old_pets =
       from(p in Pet,
         where: p.inserted_at < ^cutoff_date,
@@ -31,73 +31,73 @@ defmodule PerdiMeuPet.Pets.Cleaner do
     count = length(old_pets)
 
     if count > 0 do
-      Logger.info("Encontrados #{count} posts para remover")
+      Logger.info("Found #{count} posts to remove")
 
-      # Remove cada post e sua imagem
+      # Remove each post and its image
       Enum.each(old_pets, fn pet ->
         delete_pet_with_image(pet)
       end)
 
-      Logger.info("✓ Limpeza concluída: #{count} posts removidos")
+      Logger.info("✓ Cleanup completed: #{count} posts removed")
     else
-      Logger.info("✓ Nenhum post antigo encontrado")
+      Logger.info("✓ No old posts found")
     end
 
     count
   end
 
-  # Remove um pet e sua imagem associada
+  # Remove a pet and its associated image
   defp delete_pet_with_image(pet) do
-    # Remove a imagem se existir
+    # Remove the image if it exists
     if pet.photo_url do
       delete_image(pet.photo_url)
     end
 
-    # Remove o pet do banco
+    # Remove the pet from database
     case Repo.delete(pet) do
       {:ok, _} ->
-        Logger.debug("Post removido: #{pet.name} (ID: #{pet.id})")
+        Logger.debug("Post removed: #{pet.name} (ID: #{pet.id})")
         :ok
 
       {:error, reason} ->
-        Logger.error("Erro ao remover post #{pet.id}: #{inspect(reason)}")
+        Logger.error("Error removing post #{pet.id}: #{inspect(reason)}")
         :error
     end
   end
 
-  # Remove arquivo de imagem do disco
+  # Remove image file from disk
   defp delete_image(photo_url) do
-    # Extrai o nome do arquivo da URL (ex: "/uploads/pet_123.jpg" -> "pet_123.jpg")
+    # Extract filename from URL (ex: "/uploads/pet_123.jpg" -> "pet_123.jpg")
     filename = Path.basename(photo_url)
 
-    # Monta o caminho completo
+    # Build complete path
     uploads_dir = get_uploads_dir()
     file_path = Path.join(uploads_dir, filename)
 
-    # Remove o arquivo se existir
+    # Remove the file if it exists
     if File.exists?(file_path) do
       case File.rm(file_path) do
         :ok ->
-          Logger.debug("Imagem removida: #{filename}")
+          Logger.debug("Image removed: #{filename}")
           :ok
 
         {:error, reason} ->
-          Logger.warning("Erro ao remover imagem #{filename}: #{inspect(reason)}")
+          Logger.warning("Error removing image #{filename}: #{inspect(reason)}")
           :error
       end
     else
-      Logger.debug("Imagem não encontrada: #{filename}")
+      Logger.debug("Image not found: #{filename}")
       :ok
     end
   end
 
-  # Retorna o diretório de uploads (volume persistente em produção)
+  # Returns the uploads directory (persistent volume in production)
   defp get_uploads_dir do
     if File.dir?("/data") do
-      # Produção: usa volume persistente montado em /data
+      # Production: uses persistent volume mounted at /data
       "/data/uploads"
     else
-      # Desenvolvimento: usa priv/static/uploads
+      # Development: uses priv/static/uploads
       Path.join([
         :code.priv_dir(:perdi_meu_pet) |> to_string(),
         "static",
@@ -107,7 +107,7 @@ defmodule PerdiMeuPet.Pets.Cleaner do
   end
 
   @doc """
-  Retorna o número de dias que um post será mantido antes da exclusão automática.
+  Returns the number of days a post will be kept before automatic deletion.
   """
   def days_to_keep, do: @days_to_keep
 end

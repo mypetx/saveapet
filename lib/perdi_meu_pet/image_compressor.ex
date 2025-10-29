@@ -1,16 +1,16 @@
 defmodule PerdiMeuPet.ImageCompressor do
   @moduledoc """
-  Módulo para compressão de imagens usando comandos do sistema.
-  Reduz o tamanho de imagens para economizar espaço de armazenamento.
+  Module for image compression using system commands.
+  Reduces image size to save storage space.
   """
 
   @max_width 1200
   @max_height 1200
-  @quality 85
+  @quality 65
 
   @doc """
-  Comprime uma imagem redimensionando e ajustando qualidade.
-  Retorna o caminho do arquivo comprimido.
+  Compresses an image by resizing and adjusting quality.
+  Returns the path of the compressed file.
   """
   def compress(file_path) do
     original_size = File.stat!(file_path).size
@@ -20,11 +20,11 @@ defmodule PerdiMeuPet.ImageCompressor do
         compress_image(file_path, type)
 
       _ ->
-        # Se não for uma imagem suportada, retorna o arquivo original
+        # If not a supported image, return the original file
         {:ok, file_path}
     end
 
-    # Log da compressão
+    # Log compression results
     case result do
       {:ok, compressed_path} ->
         compressed_size = File.stat!(compressed_path).size
@@ -57,8 +57,8 @@ defmodule PerdiMeuPet.ImageCompressor do
   end
 
   defp compress_image(file_path, _type) do
-    # Usa System.cmd para chamar sips (ferramenta nativa do macOS)
-    # ou convert (ImageMagick) se disponível
+    # Uses System.cmd to call sips (macOS native tool)
+    # or convert (ImageMagick) if available
     cond do
       command_available?("sips") ->
         compress_with_sips(file_path)
@@ -67,13 +67,13 @@ defmodule PerdiMeuPet.ImageCompressor do
         compress_with_imagemagick(file_path)
 
       true ->
-        # Se nenhuma ferramenta disponível, apenas reduz qualidade do arquivo
+        # If no tools available, just reduce file size
         reduce_file_size(file_path)
     end
   end
 
   defp compress_with_sips(file_path) do
-    # Redimensiona mantendo proporções e converte para formato menor
+    # Resize maintaining proportions and convert to smaller format
     temp_file = file_path <> ".tmp"
 
     case System.cmd("sips", [
@@ -115,13 +115,13 @@ defmodule PerdiMeuPet.ImageCompressor do
   end
 
   defp reduce_file_size(file_path) do
-    # Fallback: se nenhuma ferramenta disponível,
-    # pelo menos verifica o tamanho e alerta
+    # Fallback: if no tools available,
+    # at least check size and warn
     file_stat = File.stat!(file_path)
     max_size = 5 * 1024 * 1024  # 5MB
 
     if file_stat.size > max_size do
-      IO.warn("Imagem muito grande (#{file_stat.size} bytes) e nenhuma ferramenta de compressão disponível")
+      IO.warn("Image too large (#{file_stat.size} bytes) and no compression tools available")
     end
 
     {:ok, file_path}

@@ -44,7 +44,7 @@ defmodule PerdiMeuPetWeb.PetsController do
 
           case File.cp(upload.path, dest) do
             :ok ->
-              # Comprime a imagem para economizar espaço
+              # Compress image to save storage space
               {:ok, _compressed_path} = PerdiMeuPet.ImageCompressor.compress(dest)
               Map.put(attrs, "photo_url", "/uploads/#{filename}")
 
@@ -86,7 +86,7 @@ defmodule PerdiMeuPetWeb.PetsController do
 
             case File.cp(upload.path, dest) do
               :ok ->
-                # Comprime a imagem para economizar espaço
+                # Compress image to save storage space
                 {:ok, _compressed_path} = PerdiMeuPet.ImageCompressor.compress(dest)
                 Map.put(params, "photo_url", "/uploads/#{filename}")
 
@@ -121,7 +121,7 @@ defmodule PerdiMeuPetWeb.PetsController do
       if pet.user_id != user.id do
         conn |> put_status(403) |> json(%{error: "forbidden"})
       else
-        # Remove a imagem antes de deletar o pet
+        # Remove the image before deleting the pet
         if pet.photo_url do
           delete_pet_image(pet.photo_url)
         end
@@ -134,7 +134,7 @@ defmodule PerdiMeuPetWeb.PetsController do
     end
   end
 
-  # Remove arquivo de imagem do disco
+  # Remove image file from disk
   defp delete_pet_image(photo_url) do
     filename = Path.basename(photo_url)
     uploads_dir = get_uploads_dir()
@@ -145,15 +145,15 @@ defmodule PerdiMeuPetWeb.PetsController do
     end
   end
 
-  # Retorna o diretório de uploads (volume persistente em produção)
+  # Returns the uploads directory (persistent volume in production)
   defp get_uploads_dir do
     if File.dir?("/data") do
-      # Produção: usa volume persistente montado em /data
+      # Production: uses persistent volume mounted at /data
       uploads_dir = "/data/uploads"
       File.mkdir_p!(uploads_dir)
       uploads_dir
     else
-      # Desenvolvimento: usa priv/static/uploads
+      # Development: uses priv/static/uploads
       uploads_dir = Path.join([:code.priv_dir(:perdi_meu_pet) |> to_string(), "static", "uploads"])
       File.mkdir_p!(uploads_dir)
       uploads_dir
