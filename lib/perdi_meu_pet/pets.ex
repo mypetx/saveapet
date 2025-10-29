@@ -12,6 +12,15 @@ defmodule PerdiMeuPet.Pets do
     )
   end
 
+  def list_pets_by_user(user_id) do
+    Repo.all(
+      from p in Pet,
+      where: p.user_id == ^user_id,
+      order_by: [desc: p.inserted_at],
+      preload: [:user]
+    )
+  end
+
   def get_pet!(id) do
     Repo.get!(Pet, id) |> Repo.preload(:user)
   end

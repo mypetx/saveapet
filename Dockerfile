@@ -1,4 +1,4 @@
-FROM hexpm/elixir:1.17.3-erlang-27.2-debian-bookworm-20250102-slim AS build
+FROM hexpm/elixir:1.16.2-erlang-26.2.2-debian-bookworm-20240130-slim AS build
 
 # Install build dependencies
 RUN apt-get update -y && apt-get install -y build-essential git curl \
@@ -21,6 +21,7 @@ RUN mkdir config
 
 # Copy compile-time config files
 COPY config/config.exs config/
+COPY config/runtime.exs config/
 RUN mix deps.compile
 
 # Copy application code
@@ -37,7 +38,7 @@ RUN mix release
 FROM debian:bookworm-slim AS app
 
 RUN apt-get update -y && \
-  apt-get install -y libstdc++6 openssl libncurses5 locales ca-certificates \
+  apt-get install -y libstdc++6 openssl libncurses5 locales ca-certificates imagemagick \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # Set the locale

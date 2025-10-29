@@ -1,18 +1,12 @@
 import Config
 
-# Configure your database
-if config_env() == :prod do
-  database_url =
-    System.get_env("DATABASE_URL") ||
-      raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
-      """
+# Runtime configuration (loaded when the app starts, not at compile time)
 
+if config_env() == :prod do
+  # Use SQLite in production (simpler for this project)
   config :perdi_meu_pet, PerdiMeuPet.Repo,
-    url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    ssl: System.get_env("DB_SSL") == "true"
+    database: "/data/perdi_meu_pet.db",
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
 
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||

@@ -12,7 +12,8 @@ defmodule PerdiMeuPet.MixProject do
       releases: [
         perdi_meu_pet: [
           include_executables_for: [:unix],
-          applications: [runtime_tools: :permanent]
+          applications: [runtime_tools: :permanent],
+          validate_compile_env: false
         ]
       ]
     ]

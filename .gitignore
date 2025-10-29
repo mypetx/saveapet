@@ -1,3 +1,59 @@
+# Variáveis de ambiente e segredos
 .env
+.env.*
+!.env.example
+
+# Sistema operacional
 .DS_Store
+Thumbs.db
+
+# Build do Elixir
 _build/
+deps/
+*.ez
+
+# Arquivos temporários do Elixir
+*.beam
+*.plt
+*.beam.tmp
+erl_crash.dump
+
+# Banco de dados local (SQLite)
+config/data/*.sqlite3
+config/data/*.sqlite3-shm
+config/data/*.sqlite3-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads de imagens (usuários)
+priv/static/uploads/*
+!priv/static/uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# IDE e editores
+.elixir_ls/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Mix e Hex
+mix.lock.~*
+.hex/
+
+# Node modules (se usar Node.js para assets)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Testes
+cover/
+doc/
+
+# Fly.io (se não quiser versionar)
+# fly.toml

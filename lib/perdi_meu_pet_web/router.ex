@@ -23,6 +23,7 @@ defmodule PerdiMeuPetWeb.Router do
     pipe_through :auth
     get "/me", AuthController, :me
     patch "/me", AuthController, :update
+    get "/pets/my", PetsController, :my_pets
     post "/pets", PetsController, :create
     patch "/pets/:id", PetsController, :update
     delete "/pets/:id", PetsController, :delete
@@ -37,6 +38,9 @@ defmodule PerdiMeuPetWeb.Router do
 
   # Serve project images directly from priv/static/imgs
   get "/imgs/:filename", PerdiMeuPetWeb.ImagesController, :serve
+
+  # Serve uploaded pet images from volume
+  get "/uploads/:filename", PerdiMeuPetWeb.UploadController, :serve
 
   # fallback to serve SPA index.html
   get "/*path", PerdiMeuPetWeb.SpaController, :index

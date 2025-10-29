@@ -8,26 +8,31 @@ defmodule PerdiMeuPet.Application do
     children = [
       {Phoenix.PubSub, name: PerdiMeuPet.PubSub},
       PerdiMeuPet.Repo,
-      PerdiMeuPetWeb.Endpoint
+      PerdiMeuPetWeb.Endpoint,
+      PerdiMeuPet.Scheduler
     ]
 
-    # ensure uploads dir
-    uploads = Path.expand("priv/static/uploads", File.cwd!())
-    File.mkdir_p!(uploads)
+    # Garante que o diretório de uploads existe
+    uploads_dir = if File.dir?("/data") do
+      "/data/uploads"  # Produção: volume persistente
+    else
+      Path.expand("priv/static/uploads", File.cwd!())  # Desenvolvimento
+    end
+    File.mkdir_p!(uploads_dir)
+    Logger.info("Uploads directory: #{uploads_dir}")
 
     opts = [strategy: :one_for_one, name: PerdiMeuPet.Supervisor]
     Logger.info("Starting PerdiMeuPet Application")
     {:ok, pid} = Supervisor.start_link(children, opts)
 
-    # Run Ecto migrations on startup (priv/repo/migrations)
-    path = Application.app_dir(:perdi_meu_pet, "priv/repo/migrations")
+    # Run migrations automatically (idempotent - safe to run multiple times)
     try do
-      Ecto.Migrator.with_repo(PerdiMeuPet.Repo, fn repo ->
-        Ecto.Migrator.run(repo, path, :up, all: true)
-      end)
+      Logger.info("Running database migrations...")
+      PerdiMeuPet.Release.migrate()
+      Logger.info("Migrations completed successfully")
     rescue
-      e in [Ecto.MigrationError, Exqlite.Error] ->
-        IO.puts("[warn] migrations skipped or partially applied: #{inspect(e)}")
+      e ->
+        Logger.warning("Migrations check: #{inspect(e)}")
     end
 
     {:ok, pid}

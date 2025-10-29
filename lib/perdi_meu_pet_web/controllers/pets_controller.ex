@@ -10,6 +10,17 @@ defmodule PerdiMeuPetWeb.PetsController do
     json(conn, %{pets: pets})
   end
 
+  def my_pets(conn, _params) do
+    user = conn.assigns[:current_user]
+
+    if user == nil do
+      conn |> put_status(401) |> json(%{error: "unauthenticated"})
+    else
+      pets = Pets.list_pets_by_user(user.id)
+      json(conn, %{pets: pets})
+    end
+  end
+
   def show(conn, %{"id" => id}) do
     pet = Pets.get_pet!(id)
     json(conn, %{pet: pet})
@@ -26,13 +37,17 @@ defmodule PerdiMeuPetWeb.PetsController do
 
       attrs = case Map.get(params, "photo") do
         %Plug.Upload{} = upload ->
-          uploads_dir = Path.join([:code.priv_dir(:perdi_meu_pet) |> to_string(), "static", "uploads"]) |> Path.expand()
-          File.mkdir_p!(uploads_dir)
+          uploads_dir = get_uploads_dir()
           ext = Path.extname(upload.filename || "")
           filename = "pet_#{:erlang.unique_integer([:positive])}#{ext}"
           dest = Path.join(uploads_dir, filename)
+
           case File.cp(upload.path, dest) do
-            :ok -> Map.put(attrs, "photo_url", "/uploads/#{filename}")
+            :ok ->
+              # Comprime a imagem para economizar espaço
+              {:ok, _compressed_path} = PerdiMeuPet.ImageCompressor.compress(dest)
+              Map.put(attrs, "photo_url", "/uploads/#{filename}")
+
             {:error, reason} ->
               # log and continue without photo
               IO.warn("failed to copy upload: #{inspect(reason)}")
@@ -64,13 +79,17 @@ defmodule PerdiMeuPetWeb.PetsController do
         # Handle optional photo upload
         attrs = case Map.get(params, "photo") do
           %Plug.Upload{} = upload ->
-            uploads_dir = Path.join([:code.priv_dir(:perdi_meu_pet) |> to_string(), "static", "uploads"]) |> Path.expand()
-            File.mkdir_p!(uploads_dir)
+            uploads_dir = get_uploads_dir()
             ext = Path.extname(upload.filename || "")
             filename = "pet_#{:erlang.unique_integer([:positive])}#{ext}"
             dest = Path.join(uploads_dir, filename)
+
             case File.cp(upload.path, dest) do
-              :ok -> Map.put(params, "photo_url", "/uploads/#{filename}")
+              :ok ->
+                # Comprime a imagem para economizar espaço
+                {:ok, _compressed_path} = PerdiMeuPet.ImageCompressor.compress(dest)
+                Map.put(params, "photo_url", "/uploads/#{filename}")
+
               {:error, reason} ->
                 IO.warn("failed to copy upload: #{inspect(reason)}")
                 params
@@ -102,11 +121,42 @@ defmodule PerdiMeuPetWeb.PetsController do
       if pet.user_id != user.id do
         conn |> put_status(403) |> json(%{error: "forbidden"})
       else
+        # Remove a imagem antes de deletar o pet
+        if pet.photo_url do
+          delete_pet_image(pet.photo_url)
+        end
+
         case Pets.delete_pet(pet) do
           {:ok, _pet} -> json(conn, %{success: true})
           {:error, changeset} -> conn |> put_status(400) |> json(%{error: "delete failed", details: Ecto.Changeset.traverse_errors(changeset, fn {msg, _} -> msg end)})
         end
       end
+    end
+  end
+
+  # Remove arquivo de imagem do disco
+  defp delete_pet_image(photo_url) do
+    filename = Path.basename(photo_url)
+    uploads_dir = get_uploads_dir()
+    file_path = Path.join(uploads_dir, filename)
+
+    if File.exists?(file_path) do
+      File.rm(file_path)
+    end
+  end
+
+  # Retorna o diretório de uploads (volume persistente em produção)
+  defp get_uploads_dir do
+    if File.dir?("/data") do
+      # Produção: usa volume persistente montado em /data
+      uploads_dir = "/data/uploads"
+      File.mkdir_p!(uploads_dir)
+      uploads_dir
+    else
+      # Desenvolvimento: usa priv/static/uploads
+      uploads_dir = Path.join([:code.priv_dir(:perdi_meu_pet) |> to_string(), "static", "uploads"])
+      File.mkdir_p!(uploads_dir)
+      uploads_dir
     end
   end
 end
